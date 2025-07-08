@@ -3,16 +3,30 @@ Asset selling model class
 Adapted from code by Donghun Lee (c) 2018
 
 """
+
 from collections import namedtuple
+
 import numpy as np
 
-class AssetSellingModel():
+
+class AssetSellingModel:
     """
     Base class for model
     """
 
-    def __init__(self, state_variable, decision_variable, state_0, exog_0,T=10, gamma=1,exog_info_fn=None, transition_fn=None,
-                 objective_fn=None, seed=20180529):
+    def __init__(
+        self,
+        state_variable,
+        decision_variable,
+        state_0,
+        exog_0,
+        T=10,
+        gamma=1,
+        exog_info_fn=None,
+        transition_fn=None,
+        objective_fn=None,
+        seed=20180529,
+    ):
         """
         Initializes the model
 
@@ -26,34 +40,28 @@ class AssetSellingModel():
         :param seed: int - seed for random number generator
         """
 
-        self.initial_args = {'seed': seed,'T': T,'exog_params':exog_0,'gamma':gamma}
-        exog_params = self.initial_args['exog_params']
-        biasdf = exog_params['biasdf']
+        self.initial_args = {
+            "seed": seed,
+            "T": T,
+            "exog_params": exog_0,
+            "gamma": gamma,
+        }
+        exog_params = self.initial_args["exog_params"]
+        biasdf = exog_params["biasdf"]
         biasdf = biasdf.cumsum(axis=1)
-        self.initial_args['exog_params'].update({'biasdf':biasdf})
-        #print(self.initial_args['exog_params']['biasdf'])
-        #print("\n")
-        #print(self.initial_args)
-
-        
-
-
-
-        
+        self.initial_args["exog_params"].update({"biasdf": biasdf})
+        # print(self.initial_args['exog_params']['biasdf'])
+        # print("\n")
+        # print(self.initial_args)
 
         self.prng = np.random.RandomState(seed)
         self.initial_state = state_0
         self.state_variable = state_variable
         self.decision_variable = decision_variable
-        self.State = namedtuple('State', state_variable)
+        self.State = namedtuple("State", state_variable)
         self.state = self.build_state(state_0)
-        self.Decision = namedtuple('Decision', decision_variable)
+        self.Decision = namedtuple("Decision", decision_variable)
         self.objective = 0.0
-
-
-
-
-
 
     def build_state(self, info):
         """
@@ -73,7 +81,6 @@ class AssetSellingModel():
         """
         return self.Decision(*[info[k] for k in self.decision_variable])
 
-
     def exog_info_fn(self):
         """
         this function gives the exogenous information that is dependent on a random process (in the case of the the asset
@@ -83,45 +90,55 @@ class AssetSellingModel():
         """
         # we assume that the change in price is normally distributed with mean bias and variance 2
 
-        exog_params = self.initial_args['exog_params']
-        
+        exog_params = self.initial_args["exog_params"]
 
-        biasdf = exog_params['biasdf'].T
+        biasdf = exog_params["biasdf"].T
         biasprob = biasdf[self.state.bias]
-        
-        
+
         coin = self.prng.random_sample()
-        if (coin < biasprob['Up']):
-            new_bias = 'Up'
-            bias = exog_params['UpStep']
-        elif (coin>=biasprob['Up'] and coin<biasprob['Neutral']):
-            new_bias = 'Neutral'
+        if coin < biasprob["Up"]:
+            new_bias = "Up"
+            bias = exog_params["UpStep"]
+        elif coin >= biasprob["Up"] and coin < biasprob["Neutral"]:
+            new_bias = "Neutral"
             bias = 0
         else:
-            new_bias = 'Down'
-            bias = exog_params['DownStep']
-         
-        
+            new_bias = "Down"
+            bias = exog_params["DownStep"]
 
-    
-       
         #####
         prev_price2 = self.state.prev_price
         prev_price = self.state.price
         #####
 
-        price_delta = self.prng.normal(bias, exog_params['Variance'])
-        updated_price = self.state.price +  price_delta
+        price_delta = self.prng.normal(bias, exog_params["Variance"])
+        updated_price = self.state.price + price_delta
         # we account for the fact that asset prices cannot be negative by setting the new price as 0 whenever the
         # random process gives us a negative price
         new_price = 0.0 if updated_price < 0.0 else updated_price
 
-        print("coin ",coin," curr_bias ",self.state.bias," new_bias ",new_bias," price_delta ", price_delta, " new price ",new_price)
+        print(
+            "coin ",
+            coin,
+            " curr_bias ",
+            self.state.bias,
+            " new_bias ",
+            new_bias,
+            " price_delta ",
+            price_delta,
+            " new price ",
+            new_price,
+        )
 
         #####
-        return {"price": new_price,"bias":new_bias,
-                    "prev_price":prev_price, "prev_price2":prev_price2}
+        return {
+            "price": new_price,
+            "bias": new_bias,
+            "prev_price": prev_price,
+            "prev_price2": prev_price2,
+        }
         #####
+
     def transition_fn(self, decision, exog_info):
         """
         this function takes in the decision and exogenous information to update the state
@@ -144,7 +161,7 @@ class AssetSellingModel():
         :return: float - calculated contribution
         """
         sell_size = 1 if decision.sell is 1 and self.state.resource != 0 else 0
-        obj_part =  self.state.price * sell_size
+        obj_part = self.state.price * sell_size
         return obj_part
 
     def step(self, decision):
@@ -159,4 +176,3 @@ class AssetSellingModel():
         self.objective += self.objective_fn(decision, exog_info)
         exog_info.update(self.transition_fn(decision, exog_info))
         self.state = self.build_state(exog_info)
-

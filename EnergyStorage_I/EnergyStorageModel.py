@@ -3,17 +3,30 @@ Energy storage model class
 Adapted from code by Donghun Lee (c) 2018
 
 """
+
 from collections import namedtuple
+
 import numpy as np
 import pandas as pd
 
-class EnergyStorageModel():
+
+class EnergyStorageModel:
     """
     Base class for energy storage model
     """
 
-    def __init__(self, state_variable, decision_variable, state_0, params, exog_params,possible_decisions,
-                 exog_info_fn=None, transition_fn=None, objective_fn=None):
+    def __init__(
+        self,
+        state_variable,
+        decision_variable,
+        state_0,
+        params,
+        exog_params,
+        possible_decisions,
+        exog_info_fn=None,
+        transition_fn=None,
+        objective_fn=None,
+    ):
         """
         Initializes the model
 
@@ -21,7 +34,7 @@ class EnergyStorageModel():
         :param decision_variable: list(str) - decision variable dimension names
         :param state_0: dict - contains the information to populate initial state, including eta (the fraction of
                energy maintained when charging or discharging the battery) and battery capacity
-        :param params: all the parameters including DataFrame (exog_data) containning the price information 
+        :param params: all the parameters including DataFrame (exog_data) containning the price information
         :param possible_decisions: list - list of possible decisions we could make
         :param exog_info_fn: function - calculates relevant exogenous information
         :param transition_fn: function - takes in decision variables and exogenous information to describe how the state
@@ -30,28 +43,26 @@ class EnergyStorageModel():
         """
 
         self.init_args = params
-        self.prng = np.random.RandomState(params['seed'])
+        self.prng = np.random.RandomState(params["seed"])
         self.exog_params = exog_params
 
         self.initial_state = state_0
         self.state_variable = state_variable
         self.decision_variable = decision_variable
-        
+
         self.possible_decisions = possible_decisions
-        self.State = namedtuple('State', state_variable)
+        self.State = namedtuple("State", state_variable)
         self.state = self.build_state(self.initial_state)
-        self.Decision = namedtuple('Decision', decision_variable)
+        self.Decision = namedtuple("Decision", decision_variable)
         self.objective = 0.0
-        
-        #This will keep a list of states visited
+
+        # This will keep a list of states visited
         self.states = [self.state]
 
     def reset(self):
         self.objective = 0.0
         self.state = self.build_state(self.initial_state)
         self.states = [self.state]
-
-
 
     def build_state(self, info):
         """
@@ -62,7 +73,7 @@ class EnergyStorageModel():
         """
         return self.State(*[info[k] for k in self.state_variable])
 
-    def build_decision(self, info,energy_amount):
+    def build_decision(self, info, energy_amount):
         """
         this function returns a decision
 
@@ -71,21 +82,23 @@ class EnergyStorageModel():
         :return: namedtuple - a decision object
 
         """
-        info_copy = {'buy': 0, 'hold': 0, 'sell': 0}
+        info_copy = {"buy": 0, "hold": 0, "sell": 0}
         # the amount of power that can be bought or sold is limited by constraints
         for k in self.decision_variable:
-            if k == 'buy' and info[k] > 0:
-                info_copy[k] = (self.init_args['Rmax'] - energy_amount) / self.init_args['eta']
-            elif k == 'sell' and info[k] > energy_amount:
+            if k == "buy" and info[k] > 0:
+                info_copy[k] = (
+                    self.init_args["Rmax"] - energy_amount
+                ) / self.init_args["eta"]
+            elif k == "sell" and info[k] > energy_amount:
                 info_copy[k] = energy_amount
             else:
                 info_copy[k] = info[k]
         return self.Decision(*[info_copy[k] for k in self.decision_variable])
 
-    def exog_info_fn(self,time):
-        
-        next_price = self.exog_params['hist_price'][time]
-        
+    def exog_info_fn(self, time):
+
+        next_price = self.exog_params["hist_price"][time]
+
         return next_price
 
     def transition_fn(self, time, decision):
@@ -97,17 +110,26 @@ class EnergyStorageModel():
         :return: updated state
         """
         new_price = self.exog_info_fn(time)
-        new_energy_amount = self.state.energy_amount + (self.init_args['eta'] * decision.buy) - decision.sell
-
-        
+        new_energy_amount = (
+            self.state.energy_amount
+            + (self.init_args["eta"] * decision.buy)
+            - decision.sell
+        )
 
         if len(self.state_variable) == 2:
-            state = self.build_state({'energy_amount': new_energy_amount,'price': new_price})
-        
-        elif len(self.state_variable) == 3:
-            state = self.build_state({'energy_amount': new_energy_amount,'price': new_price,'prev_price':self.state.price})
+            state = self.build_state(
+                {"energy_amount": new_energy_amount, "price": new_price}
+            )
 
-        
+        elif len(self.state_variable) == 3:
+            state = self.build_state(
+                {
+                    "energy_amount": new_energy_amount,
+                    "price": new_price,
+                    "prev_price": self.state.price,
+                }
+            )
+
         return state
 
     def objective_fn(self, decision):
@@ -117,7 +139,9 @@ class EnergyStorageModel():
         :param decision: namedtuple - contains all decision info
         :return: float - calculated contribution
         """
-        obj_part = self.state.price * (self.init_args['eta']*decision.sell - decision.buy)
+        obj_part = self.state.price * (
+            self.init_args["eta"] * decision.sell - decision.buy
+        )
         return obj_part
 
     def step(self, time, decision):
@@ -132,4 +156,3 @@ class EnergyStorageModel():
         self.objective += self.objective_fn(decision)
         self.state = self.transition_fn(time, decision)
         self.states.append(self.state)
-

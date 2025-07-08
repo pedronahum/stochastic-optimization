@@ -1,0 +1,19 @@
+# ruff.toml
+
+# Only lint the new code:
+select = ["E", "F", "I", "B"]
+line-length = 100
+target-version = "py310"
+
+# Don’t touch the legacy folders:
+exclude = [
+  "AssetSelling/*",
+  "TwoNewsvendor/*",
+  "ClinicalTrials/*",
+  "EnergyStorage_I/*",
+  "BloodManagement/*",
+  "AdaptiveMarketPlanning/*",
+  "MedicalDecisionDiabetes/*",
+  "StochasticShortestPath_Static/*",
+  "StochasticShortestPath_Dynamic/*",
+]
