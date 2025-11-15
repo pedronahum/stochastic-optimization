@@ -22,6 +22,7 @@ from problems.blood_management.model import (
     BloodManagementConfig,
     BloodManagementModel,
     ExogenousInfo,
+    BLOOD_TYPES,
 )
 from problems.blood_management.policy import (
     GreedyPolicy,
@@ -33,6 +34,7 @@ __all__ = [
     "BloodManagementConfig",
     "BloodManagementModel",
     "ExogenousInfo",
+    "BLOOD_TYPES",
     "GreedyPolicy",
     "FIFOPolicy",
     "RandomPolicy",
