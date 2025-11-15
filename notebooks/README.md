@@ -7,7 +7,7 @@ Interactive tutorials for all 9 stochastic optimization problems. Each notebook 
 Click any badge below to open in Google Colab:
 
 ### 1. Blood Management
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/blood_management.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb)
 
 Blood bank inventory optimization with 8 blood types, age-dependent inventory, and stochastic demand.
 
@@ -16,7 +16,7 @@ Blood bank inventory optimization with 8 blood types, age-dependent inventory, a
 ---
 
 ### 2. Clinical Trials
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/clinical_trials.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/clinical_trials.ipynb)
 
 Adaptive dose optimization for clinical trials with patient outcomes.
 
@@ -25,7 +25,7 @@ Adaptive dose optimization for clinical trials with patient outcomes.
 ---
 
 ### 3. SSP Dynamic
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/ssp_dynamic.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_dynamic.ipynb)
 
 Stochastic shortest path with dynamic programming and lookahead.
 
@@ -34,7 +34,7 @@ Stochastic shortest path with dynamic programming and lookahead.
 ---
 
 ### 4. SSP Static
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/ssp_static.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_static.ipynb)
 
 Classical shortest path with percentile-based risk measures.
 
@@ -43,7 +43,7 @@ Classical shortest path with percentile-based risk measures.
 ---
 
 ### 5. Adaptive Market Planning
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/adaptive_market_planning.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/adaptive_market_planning.ipynb)
 
 Dynamic pricing and demand forecasting with market adaptation.
 
@@ -52,7 +52,7 @@ Dynamic pricing and demand forecasting with market adaptation.
 ---
 
 ### 6. Medical Decision - Diabetes
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/medical_decision_diabetes.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/medical_decision_diabetes.ipynb)
 
 Glucose-insulin dynamics for diabetes management.
 
@@ -61,7 +61,7 @@ Glucose-insulin dynamics for diabetes management.
 ---
 
 ### 7. Two Newsvendor
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/two_newsvendor.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/two_newsvendor.ipynb)
 
 Multi-agent inventory coordination with demand uncertainty.
 
@@ -70,7 +70,7 @@ Multi-agent inventory coordination with demand uncertainty.
 ---
 
 ### 8. Asset Selling
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/asset_selling.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/asset_selling.ipynb)
 
 Optimal asset liquidation with price dynamics.
 
@@ -79,7 +79,7 @@ Optimal asset liquidation with price dynamics.
 ---
 
 ### 9. Energy Storage
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/master/notebooks/energy_storage.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/energy_storage.ipynb)
 
 Battery management with price arbitrage.
 
