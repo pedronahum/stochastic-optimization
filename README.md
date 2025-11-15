@@ -78,9 +78,9 @@ Adaptive dose optimization for clinical trial design with patient outcomes and s
 **Policies**: LinearDosePolicy
 
 ```python
-from stochopt.problems.clinical_trials import ClinicalTrialsConfig, ClinicalTrialsModel
+from problems.clinical_trials import Config, ClinicalTrialsModel
 
-config = ClinicalTrialsConfig(n_patients=100, horizon=50)
+config = Config(horizon=50, mu=0.1, sigma=0.5)
 model = ClinicalTrialsModel(config)
 ```
 
@@ -96,7 +96,7 @@ Multi-step lookahead path planning with time-varying costs and running average e
 **Policies**: LookaheadPolicy, GreedyLookaheadPolicy, RandomPolicy
 
 ```python
-from stochopt.problems.ssp_dynamic import SSPDynamicConfig, SSPDynamicModel
+from problems.ssp_dynamic import SSPDynamicConfig, SSPDynamicModel
 
 config = SSPDynamicConfig(n_nodes=10, horizon=15)
 model = SSPDynamicModel(config)
@@ -114,9 +114,9 @@ Classical shortest path with static graph structure and percentile-based risk me
 **Policies**: ShortestPathPolicy, RandomPolicy
 
 ```python
-from stochopt.problems.ssp_static import SSPStaticConfig, SSPStaticModel
+from problems.ssp_static import SSPStaticConfig, SSPStaticModel
 
-config = SSPStaticConfig(n_nodes=8, percentile=0.1)
+config = SSPStaticConfig(n_nodes=8, edge_prob=0.3)
 model = SSPStaticModel(config)
 ```
 
@@ -132,10 +132,10 @@ Dynamic pricing and demand forecasting with market adaptation.
 **Policies**: NeuralPolicy, heuristic policies
 
 ```python
-from stochopt.problems.adaptive_market_planning import AdaptiveMarketConfig, AdaptiveMarketModel
+from problems.adaptive_market_planning import AdaptiveMarketPlanningConfig, AdaptiveMarketPlanningModel
 
-config = AdaptiveMarketConfig(n_products=5, horizon=30)
-model = AdaptiveMarketModel(config)
+config = AdaptiveMarketPlanningConfig(price=1.5, cost=0.8, demand_mean=100.0)
+model = AdaptiveMarketPlanningModel(config)
 ```
 
 ---
@@ -150,10 +150,10 @@ Glucose-insulin dynamics for diabetes management with meal planning and health m
 **Policies**: Multiple treatment strategies
 
 ```python
-from stochopt.problems.medical_decision_diabetes import DiabetesConfig, DiabetesModel
+from problems.medical_decision_diabetes import MedicalDecisionDiabetesConfig, MedicalDecisionDiabetesModel
 
-config = DiabetesConfig(horizon=48, meal_times=[7, 12, 18])
-model = DiabetesModel(config)
+config = MedicalDecisionDiabetesConfig(n_drugs=5, initial_mu=0.5)
+model = MedicalDecisionDiabetesModel(config)
 ```
 
 ---
@@ -168,10 +168,10 @@ Multi-agent inventory coordination with demand uncertainty and allocation strate
 **Policies**: NewsvendorFieldPolicy, NeuralPolicies, coordination strategies
 
 ```python
-from stochopt.problems.two_newsvendor import TwoNewsvendorConfig, TwoNewsvendorModel
+from problems.two_newsvendor import TwoNewsvendorConfig, TwoNewsvendorFieldModel
 
-config = TwoNewsvendorConfig(n_newsvendors=2, horizon=30)
-model = TwoNewsvendorModel(config)
+config = TwoNewsvendorConfig(demand_lower=0.0, demand_upper=100.0)
+model = TwoNewsvendorFieldModel(config)
 ```
 
 ---
@@ -186,9 +186,9 @@ Optimal asset liquidation with price dynamics and market volatility.
 **Policies**: Threshold policies, time-based strategies
 
 ```python
-from stochopt.problems.asset_selling import AssetSellingConfig, AssetSellingModel
+from problems.asset_selling import AssetSellingConfig, AssetSellingModel
 
-config = AssetSellingConfig(n_assets=3, horizon=100)
+config = AssetSellingConfig(initial_price=100.0, up_step=2.0, down_step=-2.0)
 model = AssetSellingModel(config)
 ```
 
@@ -204,9 +204,9 @@ Battery management with price arbitrage and capacity constraints.
 **Policies**: Price-based policies, threshold strategies
 
 ```python
-from stochopt.problems.energy_storage import EnergyStorageConfig, EnergyStorageModel
+from problems.energy_storage import EnergyStorageConfig, EnergyStorageModel
 
-config = EnergyStorageConfig(battery_capacity=100, horizon=24)
+config = EnergyStorageConfig(capacity=100.0, initial_energy=50.0)
 model = EnergyStorageModel(config)
 ```
 
@@ -222,7 +222,7 @@ Blood bank inventory optimization with age-dependent inventory, blood type subst
 **Policies**: GreedyPolicy, FIFOPolicy, RandomPolicy
 
 ```python
-from stochopt.problems.blood_management import BloodManagementConfig, BloodManagementModel
+from problems.blood_management import BloodManagementConfig, BloodManagementModel
 
 config = BloodManagementConfig(max_age=5, surge_prob=0.1)
 model = BloodManagementModel(config)
