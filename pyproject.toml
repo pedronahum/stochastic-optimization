@@ -33,4 +33,4 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["stochopt*"]
+include = ["problems*", "tests*", "examples*", "core*"]
