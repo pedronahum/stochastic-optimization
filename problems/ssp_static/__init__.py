@@ -33,17 +33,16 @@ Example:
 """
 
 from .model import (
-    SSPStaticModel,
-    SSPStaticConfig,
-    ExogenousInfo,
-    State,
     Decision,
+    ExogenousInfo,
     Reward,
+    SSPStaticConfig,
+    SSPStaticModel,
+    State,
 )
-
 from .policy import (
-    GreedyPolicy,
     EpsilonGreedyPolicy,
+    GreedyPolicy,
     RandomPolicy,
 )
 

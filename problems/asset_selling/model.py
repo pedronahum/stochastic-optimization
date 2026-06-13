@@ -11,13 +11,13 @@ Key features:
 - Time-dependent value (must sell by horizon)
 """
 
-from typing import NamedTuple, Optional, List, Any
 from functools import partial
-from jaxtyping import Array, Float, Int, Bool, PRNGKeyArray
+from typing import Any, List, NamedTuple, Optional
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
-
+from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray
 
 # Type aliases
 State = Float[Array, "3"]  # [price, resource, bias_idx]
@@ -167,7 +167,7 @@ class AssetSellingModel:
         Returns:
             Next state.
         """
-        price, resource, bias_idx = state[0], state[1], state[2]
+        price, resource = state[0], state[1]
         sell_decision = decision[0]
 
         # Update price with random change (only if not negative)
@@ -324,7 +324,7 @@ if __name__ == "__main__":
     )
     model = AssetSellingModel(config)
 
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  Initial price: ${config.initial_price:.2f}")
     print(f"  Up step: {config.up_step}")
     print(f"  Down step: {config.down_step}")
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     key = jax.random.PRNGKey(42)
     state = model.init_state(key)
 
-    print(f"\nInitial state:")
+    print("\nInitial state:")
     print(f"  Price: ${state[0]:.2f}")
     print(f"  Resource: {int(state[1])}")
     print(f"  Bias: {model.get_bias_name(int(state[2]))}")
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     key, subkey = jax.random.split(key)
     exog = model.sample_exogenous(subkey, state, 0)
 
-    print(f"\nExogenous sample:")
+    print("\nExogenous sample:")
     print(f"  Price change: {float(exog.price_change):.2f}")
     print(f"  New bias: {model.get_bias_name(int(exog.new_bias_idx))}")
 
@@ -359,7 +359,11 @@ if __name__ == "__main__":
     compile_time = time.time() - start
 
     print(f"\nFirst call (with JIT compilation): {compile_time:.4f}s")
-    print(f"Next state: Price=${next_state[0]:.2f}, Resource={int(next_state[1])}, Bias={model.get_bias_name(int(next_state[2]))}")
+    print(
+        f"Next state: Price=${next_state[0]:.2f}, "
+        f"Resource={int(next_state[1])}, "
+        f"Bias={model.get_bias_name(int(next_state[2]))}"
+    )
 
     # Second call (compiled)
     start = time.time()
@@ -386,7 +390,11 @@ if __name__ == "__main__":
 
     print(f"\nSelling at price ${state[0]:.2f}:")
     print(f"  Reward: ${float(reward_sell):.2f}")
-    print(f"  Next state: Price=${next_state_sell[0]:.2f}, Resource={int(next_state_sell[1])}, Bias={model.get_bias_name(int(next_state_sell[2]))}")
+    print(
+        f"  Next state: Price=${next_state_sell[0]:.2f}, "
+        f"Resource={int(next_state_sell[1])}, "
+        f"Bias={model.get_bias_name(int(next_state_sell[2]))}"
+    )
 
     # Try to sell again (should get 0 reward)
     reward_sell_again = model.reward(next_state_sell, decision_sell, exog)
@@ -401,10 +409,10 @@ if __name__ == "__main__":
     valid_sell = model.is_valid_decision(state, decision_sell)
     valid_sell_again = model.is_valid_decision(next_state_sell, decision_sell)
 
-    print(f"\nWith resource:")
+    print("\nWith resource:")
     print(f"  Hold (0) valid: {bool(valid_hold)}")
     print(f"  Sell (1) valid: {bool(valid_sell)}")
-    print(f"\nAfter selling:")
+    print("\nAfter selling:")
     print(f"  Sell again valid: {bool(valid_sell_again)}")
 
     # Batch simulation
@@ -442,7 +450,7 @@ if __name__ == "__main__":
 
     # Statistics
     prices = batch_next_states[:, 0]
-    print(f"\nPrice statistics after one step:")
+    print("\nPrice statistics after one step:")
     print(f"  Mean: ${float(jnp.mean(prices)):.2f}")
     print(f"  Std: ${float(jnp.std(prices)):.2f}")
     print(f"  Min: ${float(jnp.min(prices)):.2f}")
@@ -460,7 +468,7 @@ if __name__ == "__main__":
         # Sample future price
         exog = model.sample_exogenous(key, state, 0)
         next_state = model.transition(state, jnp.array([0]), exog)  # Hold
-        future_price = next_state[0]
+        _future_price = next_state[0]
 
         # Decision: sell if price > threshold
         decision = jnp.where(state[0] > threshold, 1, 0)

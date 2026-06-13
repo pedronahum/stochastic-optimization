@@ -1,22 +1,21 @@
 """Tests for Energy Storage problem (JAX-native implementation)."""
 
-import pytest
 import jax
 import jax.numpy as jnp
+import pytest
 from flax import nnx
 
 from problems.energy_storage import (
-    EnergyStorageModel,
+    AlwaysHoldPolicy,
     EnergyStorageConfig,
+    EnergyStorageModel,
+    LinearPolicy,
+    MyopicPolicy,
+    NeuralPolicy,
     ThresholdPolicy,
     ThresholdPolicyConfig,
     TimeOfDayPolicy,
-    MyopicPolicy,
-    LinearPolicy,
-    NeuralPolicy,
-    AlwaysHoldPolicy,
 )
-
 
 # ============================================================================
 # Configuration Tests

@@ -19,14 +19,14 @@ Example:
 """
 
 from problems.blood_management.model import (
+    BLOOD_TYPES,
     BloodManagementConfig,
     BloodManagementModel,
     ExogenousInfo,
-    BLOOD_TYPES,
 )
 from problems.blood_management.policy import (
-    GreedyPolicy,
     FIFOPolicy,
+    GreedyPolicy,
     RandomPolicy,
 )
 

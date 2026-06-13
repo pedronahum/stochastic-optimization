@@ -1,25 +1,24 @@
 """Tests for Two Newsvendor problem (JAX-native implementation)."""
 
-import pytest
+import chex
 import jax
 import jax.numpy as jnp
-import chex
+import pytest
 from flax import nnx
 
 from problems.two_newsvendor import (
+    AlwaysAllocateRequestedPolicy,
+    BiasAdjustedCentralPolicy,
+    BiasAdjustedFieldPolicy,
+    ExogenousInfo,
+    NeuralCentralPolicy,
+    NeuralFieldPolicy,
+    NewsvendorCentralPolicy,
+    NewsvendorFieldPolicy,
+    TwoNewsvendorCentralModel,
     TwoNewsvendorConfig,
     TwoNewsvendorFieldModel,
-    TwoNewsvendorCentralModel,
-    ExogenousInfo,
-    NewsvendorFieldPolicy,
-    BiasAdjustedFieldPolicy,
-    NewsvendorCentralPolicy,
-    BiasAdjustedCentralPolicy,
-    NeuralFieldPolicy,
-    NeuralCentralPolicy,
-    AlwaysAllocateRequestedPolicy,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -133,7 +132,7 @@ def test_field_transition() -> None:
     """Test Field state transition."""
     config = TwoNewsvendorConfig(alpha_bias=0.1)
     model = TwoNewsvendorFieldModel(config)
-    key = jax.random.PRNGKey(42)
+    _key = jax.random.PRNGKey(42)
 
     state = jnp.array([50.0, 5.0, -3.0])  # [estimate, source_bias, central_bias]
     decision = jnp.array([45.0])  # Request 45 units
@@ -606,8 +605,12 @@ def test_full_episode_coordination() -> None:
         total_central_reward += float(central_reward)
 
         # Transition
-        field_state = field_model.transition(field_state, field_decision, exog, central_decision[0])
-        central_state = central_model.transition(central_state, central_decision, exog, field_decision[0])
+        field_state = field_model.transition(
+            field_state, field_decision, exog, central_decision[0]
+        )
+        central_state = central_model.transition(
+            central_state, central_decision, exog, field_decision[0]
+        )
 
     # Both should have accumulated costs (negative rewards)
     assert isinstance(total_field_reward, float)
@@ -621,8 +624,16 @@ def test_multiple_policies_comparison() -> None:
     central_model = TwoNewsvendorCentralModel(config)
 
     policy_pairs = [
-        ("Newsvendor", NewsvendorFieldPolicy(field_model), NewsvendorCentralPolicy(central_model, 0.5)),
-        ("BiasAdjusted", BiasAdjustedFieldPolicy(field_model), BiasAdjustedCentralPolicy(central_model, 0.5)),
+        (
+            "Newsvendor",
+            NewsvendorFieldPolicy(field_model),
+            NewsvendorCentralPolicy(central_model, 0.5),
+        ),
+        (
+            "BiasAdjusted",
+            BiasAdjustedFieldPolicy(field_model),
+            BiasAdjustedCentralPolicy(central_model, 0.5),
+        ),
         ("AlwaysApprove", NewsvendorFieldPolicy(field_model), AlwaysAllocateRequestedPolicy()),
     ]
 
@@ -648,13 +659,19 @@ def test_multiple_policies_comparison() -> None:
             key, subkey = jax.random.split(key)
             central_decision = central_policy(None, central_state, subkey, field_decision[0])
 
-            field_reward = field_model.reward(field_state, field_decision, exog, central_decision[0])
+            field_reward = field_model.reward(
+                field_state, field_decision, exog, central_decision[0]
+            )
             central_reward = central_model.reward(central_state, central_decision, exog)
 
             total_cost += float(field_reward + central_reward)
 
-            field_state = field_model.transition(field_state, field_decision, exog, central_decision[0])
-            central_state = central_model.transition(central_state, central_decision, exog, field_decision[0])
+            field_state = field_model.transition(
+                field_state, field_decision, exog, central_decision[0]
+            )
+            central_state = central_model.transition(
+                central_state, central_decision, exog, field_decision[0]
+            )
 
         results[name] = total_cost
 
@@ -685,7 +702,7 @@ def test_gradient_flow_neural_field_policy() -> None:
         return -reward  # Minimize cost
 
     # Compute gradients
-    grads = nnx.grad(loss_fn)(policy)
+    _grads = nnx.grad(loss_fn)(policy)
 
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:
@@ -712,7 +729,7 @@ def test_gradient_flow_neural_central_policy() -> None:
         return -reward
 
     # Compute gradients
-    grads = nnx.grad(loss_fn)(policy)
+    _grads = nnx.grad(loss_fn)(policy)
 
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:

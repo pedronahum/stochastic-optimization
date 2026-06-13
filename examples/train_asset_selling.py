@@ -10,18 +10,18 @@ The training loop:
 4. Updates policy parameters with Adam optimizer
 """
 
+from typing import Dict
+
 import jax
 import jax.numpy as jnp
 import optax
 from flax import nnx
-from typing import Dict
 
 from problems.asset_selling import (
-    AssetSellingModel,
     AssetSellingConfig,
-    NeuralPolicy,
-    LinearThresholdPolicy,
+    AssetSellingModel,
     HighLowPolicy,
+    NeuralPolicy,
 )
 
 
@@ -219,7 +219,7 @@ def train_neural_policy(
         optimizer.update(policy, grads)
         return loss
 
-    print(f"Training Neural Network Policy")
+    print("Training Neural Network Policy")
     print("=" * 70)
     print(f"Iterations: {n_iterations}")
     print(f"Batch size: {batch_size}")
@@ -243,7 +243,8 @@ def train_neural_policy(
 
             print(f"Iter {iteration:4d}: "
                   f"Loss = {loss:7.2f}, "
-                  f"Eval Reward = {eval_stats['mean_reward']:7.2f} ± {eval_stats['std_reward']:5.2f}, "
+                  f"Eval Reward = {eval_stats['mean_reward']:7.2f} ± "
+                  f"{eval_stats['std_reward']:5.2f}, "
                   f"Steps = {eval_stats['mean_steps']:.1f}")
 
             eval_rewards.append(eval_stats['mean_reward'])
@@ -347,7 +348,7 @@ def plot_training_results(
 
     plt.tight_layout()
     plt.savefig('asset_selling_training.png', dpi=150, bbox_inches='tight')
-    print(f"\nSaved training plot to: asset_selling_training.png")
+    print("\nSaved training plot to: asset_selling_training.png")
     plt.show()
 
 
@@ -364,7 +365,7 @@ def main():
 
     print("Asset Selling - Policy Learning")
     print("=" * 70)
-    print(f"\nModel Configuration:")
+    print("\nModel Configuration:")
     print(f"  Initial price: ${config.initial_price:.2f}")
     print(f"  Up step: {config.up_step}")
     print(f"  Down step: {config.down_step}")
@@ -415,7 +416,7 @@ def main():
     key, subkey = jax.random.split(key)
     final_stats = evaluate_policy(model, trained_policy, subkey, n_episodes=1000)
 
-    print(f"\nNeural Policy:")
+    print("\nNeural Policy:")
     print(f"  Mean reward: ${final_stats['mean_reward']:.2f} ± ${final_stats['std_reward']:.2f}")
     print(f"  Range: [${final_stats['min_reward']:.2f}, ${final_stats['max_reward']:.2f}]")
     print(f"  Mean steps: {final_stats['mean_steps']:.1f}")

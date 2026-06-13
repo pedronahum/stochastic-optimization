@@ -1,14 +1,13 @@
 """Comprehensive tests for Clinical Trials problem (JAX-native implementation)."""
 
-import pytest
+import chex
 import jax
 import jax.numpy as jnp
-import chex
+import pytest
 from flax import nnx
 
 from core import simulator as sim
 from problems.clinical_trials import model, policy
-
 
 # ============================================================================
 # Configuration Tests
@@ -294,7 +293,7 @@ def test_full_episode() -> None:
     total_reward = 0.0
     health_states = [float(state.x)]
 
-    for t in range(cfg.horizon):
+    for _t in range(cfg.horizon):
         key, subkey = jax.random.split(key)
         action = π.act(state, key=subkey)
 
@@ -322,7 +321,7 @@ def test_stability_with_corrective_policy() -> None:
 
     health_values = [float(state.x)]
 
-    for t in range(cfg.horizon):
+    for _t in range(cfg.horizon):
         key, subkey = jax.random.split(key)
         action = π.act(state, key=subkey)
 
@@ -354,7 +353,7 @@ def test_instability_with_amplifying_policy() -> None:
 
     health_values = [float(state.x)]
 
-    for t in range(cfg.horizon):
+    for _t in range(cfg.horizon):
         key, subkey = jax.random.split(key)
         action = π.act(state, key=subkey)
 
@@ -392,7 +391,7 @@ def test_gradient_flow_through_policy() -> None:
         return -reward  # Minimize negative reward (maximize reward)
 
     # Compute gradients
-    grads = nnx.grad(loss_fn)(π)
+    _grads = nnx.grad(loss_fn)(π)
 
     # Check that gradient exists and is finite
     chex.assert_tree_all_finite(π.w[...])
@@ -419,7 +418,7 @@ def test_policy_parameter_update() -> None:
         return -reward
 
     # Compute gradient and update
-    loss = loss_fn(π)
+    _loss = loss_fn(π)
     grad = nnx.grad(loss_fn)(π)
     optimizer.update(π, grad)
 

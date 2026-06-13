@@ -1,19 +1,18 @@
 """Tests for Stochastic Shortest Path Static problem (JAX-native implementation)."""
 
-import pytest
+import chex
 import jax
 import jax.numpy as jnp
-import chex
+import pytest
 
 from problems.ssp_static import (
-    SSPStaticConfig,
-    SSPStaticModel,
+    EpsilonGreedyPolicy,
     ExogenousInfo,
     GreedyPolicy,
-    EpsilonGreedyPolicy,
     RandomPolicy,
+    SSPStaticConfig,
+    SSPStaticModel,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -277,7 +276,7 @@ def test_value_function_learning() -> None:
     initial_V = state[1:].copy()
     
     # Run multiple episodes
-    for episode in range(5):
+    for _episode in range(5):
         state = state.at[0].set(0.0)  # Reset to origin
         
         for t in range(10):

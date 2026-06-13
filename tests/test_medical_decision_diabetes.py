@@ -1,21 +1,20 @@
 """Tests for Medical Decision Diabetes problem (JAX-native implementation)."""
 
-import pytest
+import chex
 import jax
 import jax.numpy as jnp
-import chex
+import pytest
 
 from problems.medical_decision_diabetes import (
+    ExogenousInfo,
+    IntervalEstimationPolicy,
     MedicalDecisionDiabetesConfig,
     MedicalDecisionDiabetesModel,
-    ExogenousInfo,
-    UCBPolicy,
-    IntervalEstimationPolicy,
     PureExploitationPolicy,
     PureExplorationPolicy,
     ThompsonSamplingPolicy,
+    UCBPolicy,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -343,7 +342,7 @@ def test_pure_exploitation_policy() -> None:
 def test_pure_exploration_policy() -> None:
     """Test Pure Exploration policy."""
     policy = PureExplorationPolicy(n_drugs=5)
-    key = jax.random.PRNGKey(42)
+    _key = jax.random.PRNGKey(42)
 
     state = jnp.zeros((5, 3))  # State doesn't matter
 

@@ -1,11 +1,15 @@
 """Policies for SSP Dynamic problem."""
 
 from functools import partial
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Int, PRNGKeyArray as Key, PyTree
+from jaxtyping import Array, Float, Int, PyTree
+from jaxtyping import PRNGKeyArray as Key
+
+if TYPE_CHECKING:
+    from problems.ssp_dynamic.model import SSPDynamicModel
 
 # Type aliases
 State = Float[Array, "..."]
@@ -42,7 +46,7 @@ class LookaheadPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPDynamicModel",  # type: ignore[name-defined]
+        model: "SSPDynamicModel",
     ) -> Decision:
         """Compute optimal decision using backward induction.
 
@@ -120,7 +124,7 @@ class GreedyLookaheadPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPDynamicModel",  # type: ignore[name-defined]
+        model: "SSPDynamicModel",
     ) -> Decision:
         """Select neighbor with minimum estimated cost.
 
@@ -163,7 +167,7 @@ class RandomPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPDynamicModel",  # type: ignore[name-defined]
+        model: "SSPDynamicModel",
     ) -> Decision:
         """Select random valid neighbor.
 

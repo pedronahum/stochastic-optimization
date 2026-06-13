@@ -33,21 +33,20 @@ Example:
 """
 
 from .model import (
-    MedicalDecisionDiabetesModel,
-    MedicalDecisionDiabetesConfig,
-    ExogenousInfo,
-    State,
     Decision,
-    Reward,
     DrugIndex,
+    ExogenousInfo,
+    MedicalDecisionDiabetesConfig,
+    MedicalDecisionDiabetesModel,
+    Reward,
+    State,
 )
-
 from .policy import (
-    UCBPolicy,
     IntervalEstimationPolicy,
     PureExploitationPolicy,
     PureExplorationPolicy,
     ThompsonSamplingPolicy,
+    UCBPolicy,
 )
 
 __all__ = [

@@ -1,4 +1,5 @@
 from typing import Any
+
 import jax.numpy as jnp
 from flax import nnx  # ← note the new import
 

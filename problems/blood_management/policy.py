@@ -1,11 +1,15 @@
 """Policies for Blood Management problem."""
 
 from functools import partial
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Int, PRNGKeyArray as Key, PyTree
+from jaxtyping import Array, Float, PyTree
+from jaxtyping import PRNGKeyArray as Key
+
+if TYPE_CHECKING:
+    from problems.blood_management.model import BloodManagementModel
 
 # Type aliases
 State = Float[Array, "..."]
@@ -31,7 +35,7 @@ class GreedyPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "BloodManagementModel",  # type: ignore[name-defined]
+        model: "BloodManagementModel",
     ) -> Decision:
         """Compute greedy allocation.
 
@@ -101,7 +105,7 @@ class FIFOPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "BloodManagementModel",  # type: ignore[name-defined]
+        model: "BloodManagementModel",
     ) -> Decision:
         """Compute FIFO allocation.
 
@@ -157,7 +161,7 @@ class RandomPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "BloodManagementModel",  # type: ignore[name-defined]
+        model: "BloodManagementModel",
     ) -> Decision:
         """Compute random allocation.
 

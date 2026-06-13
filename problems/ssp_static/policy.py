@@ -6,11 +6,15 @@ This module implements policies for graph navigation:
 - Random: Uniform random neighbor selection
 """
 
-from typing import Optional
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+from typing import TYPE_CHECKING, Optional
+
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+
+if TYPE_CHECKING:
+    from problems.ssp_static.model import SSPStaticModel
 
 
 # Type aliases
@@ -35,7 +39,7 @@ class GreedyPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPStaticModel",  # type: ignore[name-defined]
+        model: "SSPStaticModel",
     ) -> Decision:
         """Select neighbor with minimum cost + value.
 
@@ -94,7 +98,7 @@ class EpsilonGreedyPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPStaticModel",  # type: ignore[name-defined]
+        model: "SSPStaticModel",
     ) -> Decision:
         """Select neighbor using epsilon-greedy.
 
@@ -149,7 +153,7 @@ class RandomPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPStaticModel",  # type: ignore[name-defined]
+        model: "SSPStaticModel",
     ) -> Decision:
         """Select random valid neighbor.
 
@@ -194,7 +198,7 @@ class BellmanGreedyPolicy:
         params: Optional[PyTree],
         state: State,
         key: Key,
-        model: "SSPStaticModel",  # type: ignore[name-defined]
+        model: "SSPStaticModel",
         edge_costs: Optional[Float[Array, "..."]] = None,
     ) -> Decision:
         """Select neighbor using sampled edge costs + V.

@@ -4,24 +4,25 @@ This script demonstrates how to train parametric policies for the battery
 energy storage problem using policy gradient methods.
 
 Example:
-    $ python -m stochopt.examples.train_energy_storage
+    $ python -m examples.train_energy_storage
 """
 
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
-from flax import nnx
 import optax
+from flax import nnx
 
 from problems.energy_storage import (
-    EnergyStorageModel,
+    AlwaysHoldPolicy,
     EnergyStorageConfig,
+    EnergyStorageModel,
     LinearPolicy,
     NeuralPolicy,
     ThresholdPolicy,
     ThresholdPolicyConfig,
     TimeOfDayPolicy,
-    AlwaysHoldPolicy,
 )
 
 
@@ -79,7 +80,7 @@ def evaluate_policy(
     model: EnergyStorageModel,
     policy: Any,
     num_episodes: int = 100,
-    key: jax.Array = jax.random.PRNGKey(0),
+    key: Optional[jax.Array] = None,
 ) -> Tuple[float, float]:
     """Evaluate a policy over multiple episodes.
 
@@ -92,9 +93,11 @@ def evaluate_policy(
     Returns:
         Tuple of (mean_reward, std_reward).
     """
+    if key is None:
+        key = jax.random.PRNGKey(0)
     rewards = []
 
-    for i in range(num_episodes):
+    for _i in range(num_episodes):
         key, subkey = jax.random.split(key)
         reward, _ = simulate_episode(model, policy, subkey)
         rewards.append(reward)

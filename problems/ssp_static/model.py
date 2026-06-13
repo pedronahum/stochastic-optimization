@@ -14,13 +14,13 @@ Decision: next_node (which neighbor to visit)
 Exogenous: Sampled edge costs from uniform distributions
 """
 
-from typing import NamedTuple, Tuple
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray, Bool
+from typing import NamedTuple
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
-
+from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray
 
 # Type aliases
 State = Float[Array, "..."]  # [current_node, V_0, V_1, ..., V_n]

@@ -37,18 +37,17 @@ Example:
 """
 
 from .model import (
-    AdaptiveMarketPlanningModel,
     AdaptiveMarketPlanningConfig,
-    ExogenousInfo,
-    State,
+    AdaptiveMarketPlanningModel,
     Decision,
+    ExogenousInfo,
     Reward,
+    State,
 )
-
 from .policy import (
+    ConstantStepPolicy,
     HarmonicStepPolicy,
     KestenStepPolicy,
-    ConstantStepPolicy,
     NeuralStepPolicy,
 )
 

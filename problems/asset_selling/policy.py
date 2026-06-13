@@ -6,13 +6,17 @@ This module implements various decision policies for the asset selling problem:
 - Myopic/greedy policies
 """
 
-from typing import Optional, List
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+from typing import TYPE_CHECKING, List, Optional
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
 from flax import nnx
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+
+if TYPE_CHECKING:
+    from problems.asset_selling.model import AssetSellingModel
 
 
 # Type aliases
@@ -155,13 +159,13 @@ class ExpectedValuePolicy:
     in the next period, accounting for the bias state.
 
     Example:
-        >>> from stochopt.problems.asset_selling.model import AssetSellingModel, AssetSellingConfig
+        >>> from problems.asset_selling.model import AssetSellingModel, AssetSellingConfig
         >>> config = AssetSellingConfig()
         >>> model = AssetSellingModel(config)
         >>> policy = ExpectedValuePolicy(model)
     """
 
-    def __init__(self, model: "AssetSellingModel") -> None:  # type: ignore[name-defined]
+    def __init__(self, model: "AssetSellingModel") -> None:
         """Initialize policy.
 
         Args:
@@ -421,18 +425,32 @@ if __name__ == "__main__":
     print("-" * 70)
     policy_sl = SellLowPolicy(threshold=90.0)
 
-    for name, state in [("Low price", state_low), ("Mid price", state_mid), ("High price", state_high)]:
+    for name, state in [
+        ("Low price", state_low),
+        ("Mid price", state_mid),
+        ("High price", state_high),
+    ]:
         decision = policy_sl(None, state, key)
-        print(f"  {name} (${state[0]:.0f}): Decision = {int(decision[0])} ({'Sell' if decision[0] else 'Hold'})")
+        print(
+            f"  {name} (${state[0]:.0f}): Decision = {int(decision[0])} "
+            f"({'Sell' if decision[0] else 'Hold'})"
+        )
 
     # Test HighLowPolicy
     print("\n2. HighLowPolicy (low=90, high=110)")
     print("-" * 70)
     policy_hl = HighLowPolicy(low_threshold=90.0, high_threshold=110.0)
 
-    for name, state in [("Low price", state_low), ("Mid price", state_mid), ("High price", state_high)]:
+    for name, state in [
+        ("Low price", state_low),
+        ("Mid price", state_mid),
+        ("High price", state_high),
+    ]:
         decision = policy_hl(None, state, key)
-        print(f"  {name} (${state[0]:.0f}): Decision = {int(decision[0])} ({'Sell' if decision[0] else 'Hold'})")
+        print(
+            f"  {name} (${state[0]:.0f}): Decision = {int(decision[0])} "
+            f"({'Sell' if decision[0] else 'Hold'})"
+        )
 
     # Test LinearThresholdPolicy
     print("\n3. LinearThresholdPolicy (learnable)")
@@ -441,9 +459,16 @@ if __name__ == "__main__":
 
     print(f"  Learned weights: {policy_lt.weights[...]}")
 
-    for name, state in [("Low price", state_low), ("Mid price", state_mid), ("High price", state_high)]:
+    for name, state in [
+        ("Low price", state_low),
+        ("Mid price", state_mid),
+        ("High price", state_high),
+    ]:
         decision = policy_lt(state, key)
-        print(f"  {name} (${state[0]:.0f}): Decision = {int(decision[0])} ({'Sell' if decision[0] else 'Hold'})")
+        print(
+            f"  {name} (${state[0]:.0f}): Decision = {int(decision[0])} "
+            f"({'Sell' if decision[0] else 'Hold'})"
+        )
 
     # Test NeuralPolicy
     print("\n4. NeuralPolicy (stochastic)")
@@ -451,9 +476,9 @@ if __name__ == "__main__":
     policy_nn = NeuralPolicy(hidden_dims=[16, 8], rngs=nnx.Rngs(42))
 
     # Run multiple times to see stochasticity
-    print(f"  Running neural policy 10 times on mid-price state:")
+    print("  Running neural policy 10 times on mid-price state:")
     decisions = []
-    for i in range(10):
+    for _i in range(10):
         key, subkey = jax.random.split(key)
         decision = policy_nn(state_mid, subkey)
         decisions.append(int(decision[0]))

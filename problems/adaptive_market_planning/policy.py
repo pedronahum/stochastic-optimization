@@ -7,13 +7,13 @@ This module implements step size selection policies for gradient-based learning:
 - Neural policy: learns optimal step size from state
 """
 
-from typing import Optional, List, Any
 from functools import partial
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from typing import Any, List, Optional
+
 import jax
 import jax.numpy as jnp
 from flax import nnx
-
+from jaxtyping import Array, Float, PRNGKeyArray, PyTree
 
 # Type aliases
 State = Float[Array, "2"]

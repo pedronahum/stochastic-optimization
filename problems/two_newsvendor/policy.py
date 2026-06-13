@@ -6,12 +6,19 @@ This module implements decision policies for both Field and Central agents:
 - Neural network policies
 """
 
-from typing import Optional, List, Any
 from functools import partial
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from typing import TYPE_CHECKING, Any, List, Optional
+
 import jax
 import jax.numpy as jnp
 from flax import nnx
+from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+
+if TYPE_CHECKING:
+    from problems.two_newsvendor.model import (
+        TwoNewsvendorCentralModel,
+        TwoNewsvendorFieldModel,
+    )
 
 
 # Type aliases
@@ -29,7 +36,7 @@ class NewsvendorFieldPolicy:
     Requests quantity = estimate + bias_adjustment
 
     Example:
-        >>> from stochopt.problems.two_newsvendor.model import TwoNewsvendorConfig, TwoNewsvendorFieldModel
+        >>> from problems.two_newsvendor.model import TwoNewsvendorConfig, TwoNewsvendorFieldModel
         >>> config = TwoNewsvendorConfig()
         >>> model = TwoNewsvendorFieldModel(config)
         >>> policy = NewsvendorFieldPolicy(model, bias_adjustment=0.0)
@@ -37,7 +44,7 @@ class NewsvendorFieldPolicy:
 
     def __init__(
         self,
-        model: "TwoNewsvendorFieldModel",  # type: ignore[name-defined]
+        model: "TwoNewsvendorFieldModel",
         bias_adjustment: float = 0.0
     ) -> None:
         """Initialize policy.
@@ -93,7 +100,7 @@ class BiasAdjustedFieldPolicy:
 
     def __init__(
         self,
-        model: "TwoNewsvendorFieldModel",  # type: ignore[name-defined]
+        model: "TwoNewsvendorFieldModel",
         use_source_bias: bool = True,
         use_central_bias: bool = True,
     ) -> None:
@@ -154,7 +161,7 @@ class NewsvendorCentralPolicy:
 
     def __init__(
         self,
-        model: "TwoNewsvendorCentralModel",  # type: ignore[name-defined]
+        model: "TwoNewsvendorCentralModel",
         trust_field: float = 0.5,
     ) -> None:
         """Initialize policy.
@@ -209,7 +216,7 @@ class BiasAdjustedCentralPolicy:
 
     def __init__(
         self,
-        model: "TwoNewsvendorCentralModel",  # type: ignore[name-defined]
+        model: "TwoNewsvendorCentralModel",
         trust_field: float = 0.5,
     ) -> None:
         """Initialize policy.

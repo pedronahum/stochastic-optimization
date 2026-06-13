@@ -1,22 +1,22 @@
 """Tests for Asset Selling model and policies."""
 
-import pytest
+import chex
 import jax
 import jax.numpy as jnp
-import chex
+import pytest
 from flax import nnx
 
 from problems.asset_selling import (
-    AssetSellingModel,
-    AssetSellingConfig,
-    ExogenousInfo,
-    SellLowPolicy,
-    HighLowPolicy,
-    ExpectedValuePolicy,
-    LinearThresholdPolicy,
-    NeuralPolicy,
     AlwaysHoldPolicy,
     AlwaysSellPolicy,
+    AssetSellingConfig,
+    AssetSellingModel,
+    ExogenousInfo,
+    ExpectedValuePolicy,
+    HighLowPolicy,
+    LinearThresholdPolicy,
+    NeuralPolicy,
+    SellLowPolicy,
 )
 
 
@@ -386,7 +386,7 @@ class TestAssetSellingPolicies:
 
         # Run multiple times (stochastic)
         decisions = []
-        for i in range(20):
+        for _i in range(20):
             key, subkey = jax.random.split(key)
             decision = policy(state, subkey)
             decisions.append(int(decision[0]))

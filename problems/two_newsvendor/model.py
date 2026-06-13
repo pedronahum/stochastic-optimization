@@ -11,17 +11,18 @@ Decision: Quantity request (Field) and quantity allocated (Central)
 Exogenous: True demand and noisy demand estimates
 """
 
-from typing import NamedTuple, Optional, Any
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray
+from typing import NamedTuple
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
-
+from jaxtyping import Array, Float, PRNGKeyArray
 
 # Type aliases
 StateField = Float[Array, "3"]  # [estimate, source_bias, central_bias]
-StateCentral = Float[Array, "7"]  # [field_request, field_bias, field_weight, field_bias_hat, estimate, source_bias, source_weight]
+# [field_request, field_bias, field_weight, field_bias_hat, estimate, source_bias, source_weight]
+StateCentral = Float[Array, "7"]
 DecisionField = Float[Array, "1"]  # [quantity_requested]
 DecisionCentral = Float[Array, "1"]  # [quantity_allocated]
 Reward = Float[Array, ""]
@@ -223,10 +224,18 @@ class TwoNewsvendorFieldModel:
         )
 
         # Sample noisy estimates
-        estimate_field = demand + jax.random.normal(key_field) * self.config.est_std_field + self.config.est_bias_field
+        estimate_field = (
+            demand
+            + jax.random.normal(key_field) * self.config.est_std_field
+            + self.config.est_bias_field
+        )
         estimate_field = jnp.maximum(0.0, estimate_field)  # Non-negative
 
-        estimate_central = demand + jax.random.normal(key_central) * self.config.est_std_central + self.config.est_bias_central
+        estimate_central = (
+            demand
+            + jax.random.normal(key_central) * self.config.est_std_central
+            + self.config.est_bias_central
+        )
         estimate_central = jnp.maximum(0.0, estimate_central)  # Non-negative
 
         return ExogenousInfo(
@@ -268,7 +277,8 @@ class TwoNewsvendorCentralModel:
             key: Random key.
 
         Returns:
-            Initial state [field_request, field_bias, field_weight, field_bias_hat, estimate, source_bias, source_weight].
+            Initial state [field_request, field_bias, field_weight,
+            field_bias_hat, estimate, source_bias, source_weight].
         """
         mid_demand = (self.config.demand_lower + self.config.demand_upper) / 2.0
         return jnp.array([
@@ -384,10 +394,18 @@ class TwoNewsvendorCentralModel:
             maxval=self.config.demand_upper
         )
 
-        estimate_field = demand + jax.random.normal(key_field) * self.config.est_std_field + self.config.est_bias_field
+        estimate_field = (
+            demand
+            + jax.random.normal(key_field) * self.config.est_std_field
+            + self.config.est_bias_field
+        )
         estimate_field = jnp.maximum(0.0, estimate_field)
 
-        estimate_central = demand + jax.random.normal(key_central) * self.config.est_std_central + self.config.est_bias_central
+        estimate_central = (
+            demand
+            + jax.random.normal(key_central) * self.config.est_std_central
+            + self.config.est_bias_central
+        )
         estimate_central = jnp.maximum(0.0, estimate_central)
 
         return ExogenousInfo(

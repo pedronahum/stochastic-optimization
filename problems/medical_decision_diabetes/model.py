@@ -20,13 +20,13 @@ Decision: Which drug to try (integer 0-4)
 Exogenous: Observed A1C reduction (true_mu + measurement_noise)
 """
 
-from typing import NamedTuple
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray
+from typing import NamedTuple
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
-
+from jaxtyping import Array, Float, Int, PRNGKeyArray
 
 # Type aliases
 State = Float[Array, "5 3"]  # 5 drugs × [mu, beta, N]

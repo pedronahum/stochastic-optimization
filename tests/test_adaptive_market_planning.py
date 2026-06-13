@@ -1,21 +1,20 @@
 """Tests for Adaptive Market Planning problem (JAX-native implementation)."""
 
-import pytest
+import chex
 import jax
 import jax.numpy as jnp
-import chex
+import pytest
 from flax import nnx
 
 from problems.adaptive_market_planning import (
     AdaptiveMarketPlanningConfig,
     AdaptiveMarketPlanningModel,
+    ConstantStepPolicy,
     ExogenousInfo,
     HarmonicStepPolicy,
     KestenStepPolicy,
-    ConstantStepPolicy,
     NeuralStepPolicy,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -499,7 +498,7 @@ def test_gradient_flow_neural_policy() -> None:
         return -reward  # Minimize negative reward
 
     # Compute gradients
-    grads = nnx.grad(loss_fn)(policy)
+    _grads = nnx.grad(loss_fn)(policy)
 
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:

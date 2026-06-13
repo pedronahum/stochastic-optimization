@@ -6,7 +6,8 @@ from typing import Optional
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray as Key
+from jaxtyping import Array, Bool, Float, Int
+from jaxtyping import PRNGKeyArray as Key
 
 # Type aliases
 State = Float[Array, "..."]  # [current_node, time, estimated_costs..., obs_count...]
@@ -220,7 +221,9 @@ class SSPDynamicModel:
 
         # Running average: alpha = 1 / obs_count
         alpha = 1.0 / obs_count
-        new_estimated_cost = (1 - alpha) * estimated_costs[current_node_idx, decision] + alpha * edge_cost
+        new_estimated_cost = (
+            (1 - alpha) * estimated_costs[current_node_idx, decision] + alpha * edge_cost
+        )
 
         # Update arrays
         estimated_costs = estimated_costs.at[current_node_idx, decision].set(new_estimated_cost)

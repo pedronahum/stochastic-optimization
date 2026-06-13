@@ -1,9 +1,20 @@
 # ruff.toml
 
-# Only lint the new code:
-select = ["E", "F", "I", "B"]
 line-length = 100
 target-version = "py311"
 
-# Don’t touch the legacy folders (now consolidated under legacy/):
-exclude = ["legacy"]
+# Don’t touch the legacy folders (now consolidated under legacy/) or the demo
+# notebooks (cross-cell references confuse pyflakes' undefined-name check).
+exclude = ["legacy", "notebooks"]
+
+[lint]
+select = ["E", "F", "I", "B"]
+# jaxtyping shape annotations are string literals (e.g. Float[Array, "3 3"]),
+# which pyflakes tries to parse as forward annotations -> F722. Ignore globally;
+# the only string annotations in this codebase are jaxtyping shapes.
+ignore = ["F722"]
+
+[lint.per-file-ignores]
+# Model modules use jaxtyping *symbolic* dimensions (e.g. Float[Array, "n_nodes"]);
+# the dimension names read as undefined to pyflakes -> F821.
+"problems/**/model.py" = ["F821"]

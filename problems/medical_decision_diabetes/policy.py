@@ -8,12 +8,12 @@ This module implements various bandit algorithms for diabetes treatment selectio
 - Thompson Sampling: Bayesian optimal exploration
 """
 
-from typing import Optional
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
+from typing import Optional
+
 import jax
 import jax.numpy as jnp
-
+from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 
 # Type aliases
 State = Float[Array, "5 3"]

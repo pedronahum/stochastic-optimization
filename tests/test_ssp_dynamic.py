@@ -1,18 +1,17 @@
 """Tests for Stochastic Shortest Path Dynamic problem (JAX-native implementation)."""
 
-import pytest
 import jax
 import jax.numpy as jnp
+import pytest
 
 from problems.ssp_dynamic import (
+    ExogenousInfo,
+    GreedyLookaheadPolicy,
+    LookaheadPolicy,
+    RandomPolicy,
     SSPDynamicConfig,
     SSPDynamicModel,
-    ExogenousInfo,
-    LookaheadPolicy,
-    GreedyLookaheadPolicy,
-    RandomPolicy,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -406,7 +405,7 @@ def test_cost_estimation_improves() -> None:
     # Track cost estimate variance over multiple episodes
     estimates_history = []
 
-    for episode in range(5):
+    for _episode in range(5):
         state = state.at[0].set(0.0)  # Reset to origin
         state = state.at[1].set(0.0)  # Reset time
 
@@ -443,7 +442,7 @@ def test_multiple_policies_same_graph() -> None:
 
     key = jax.random.PRNGKey(42)
 
-    for name, policy in policies.items():
+    for _name, policy in policies.items():
         state = model.init_state(key)
 
         # Run a few steps

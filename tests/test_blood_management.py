@@ -1,18 +1,17 @@
 """Tests for Blood Management problem (JAX-native implementation)."""
 
-import pytest
 import jax
 import jax.numpy as jnp
+import pytest
 
 from problems.blood_management import (
     BloodManagementConfig,
     BloodManagementModel,
     ExogenousInfo,
-    GreedyPolicy,
     FIFOPolicy,
+    GreedyPolicy,
     RandomPolicy,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -116,7 +115,7 @@ def test_transition_ages_blood() -> None:
     """Test that transition correctly ages blood."""
     config = BloodManagementConfig(max_age=3)
     model = BloodManagementModel(config)
-    key = jax.random.PRNGKey(42)
+    _key = jax.random.PRNGKey(42)
 
     # Create state with known inventory
     inventory = jnp.array([
@@ -382,7 +381,7 @@ def test_multiple_policies() -> None:
 
     key = jax.random.PRNGKey(42)
 
-    for name, policy in policies.items():
+    for _name, policy in policies.items():
         state = model.init_state(key)
 
         # Run a few steps

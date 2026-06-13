@@ -12,13 +12,13 @@ Key features:
 - Operational constraints (capacity, power limits)
 """
 
-from typing import NamedTuple, Optional, List, Any
 from functools import partial
-from jaxtyping import Array, Float, PRNGKeyArray, Bool
+from typing import Any, NamedTuple
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
-
+from jaxtyping import Array, Bool, Float, PRNGKeyArray
 
 # Type aliases
 State = Float[Array, "3"]  # [energy, cycles, time_of_day]

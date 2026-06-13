@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Int, PRNGKeyArray as Key
+from jaxtyping import Array, Float
+from jaxtyping import PRNGKeyArray as Key
 
 # Type aliases
 State = Float[Array, "..."]  # [inventory (blood_types × max_age), time]
@@ -181,7 +181,9 @@ class BloodManagementModel:
         allocation = decision.reshape(self.n_inventory_slots, self.n_demand_types)
 
         # Sum allocations across all demands for each inventory slot
-        total_allocated = jnp.sum(allocation, axis=1).reshape(self.n_blood_types, self.config.max_age)
+        total_allocated = jnp.sum(allocation, axis=1).reshape(
+            self.n_blood_types, self.config.max_age
+        )
         inventory_after_allocation = jnp.maximum(0, inventory - total_allocated)
 
         # Step 2: Age the blood (shift ages by 1, oldest expires)
@@ -251,13 +253,17 @@ class BloodManagementModel:
                 self.config.urgent_bonus,
                 self.config.elective_bonus
             )
-            reward_value = reward_value + jnp.minimum(allocated_to_demand, exog.demand[demand_idx]) * bonus
+            reward_value = reward_value + (
+                jnp.minimum(allocated_to_demand, exog.demand[demand_idx]) * bonus
+            )
 
             # Bonus for exact blood type match
             for age in range(self.config.max_age):
                 slot_idx = blood_type_idx * self.config.max_age + age
                 exact_match_allocation = allocation[slot_idx, demand_idx]
-                reward_value = reward_value + exact_match_allocation * self.config.no_substitution_bonus
+                reward_value = reward_value + (
+                    exact_match_allocation * self.config.no_substitution_bonus
+                )
 
         # Penalty for unmet demand
         total_allocated_per_demand = jnp.sum(allocation, axis=0)
@@ -267,10 +273,14 @@ class BloodManagementModel:
         for demand_idx in range(self.n_demand_types):
             surgery_type = demand_idx % self.n_surgery_types
             penalty_mult = jnp.where(surgery_type == 0, 2.0, 1.0)
-            reward_value = reward_value + unmet_demand[demand_idx] * self.config.shortage_penalty * penalty_mult
+            reward_value = reward_value + (
+                unmet_demand[demand_idx] * self.config.shortage_penalty * penalty_mult
+            )
 
         # Penalty for blood that will be discarded (oldest age after allocation)
-        allocation_sum = jnp.sum(allocation, axis=1).reshape(self.n_blood_types, self.config.max_age)
+        allocation_sum = jnp.sum(allocation, axis=1).reshape(
+            self.n_blood_types, self.config.max_age
+        )
         remaining = jnp.maximum(0, inventory - allocation_sum)
         oldest_blood = remaining[:, -1]  # Last age column
         reward_value = reward_value + jnp.sum(oldest_blood) * self.config.discard_penalty

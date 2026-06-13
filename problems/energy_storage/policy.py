@@ -7,13 +7,17 @@ This module implements various decision policies for battery energy storage:
 - Myopic/greedy policies
 """
 
-from typing import Optional, List, Any
 from functools import partial
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+from typing import TYPE_CHECKING, Any, List, Optional
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
 from flax import nnx
+from jaxtyping import Array, Float, PRNGKeyArray, PyTree
+
+if TYPE_CHECKING:
+    from problems.energy_storage.model import EnergyStorageModel
 
 
 # Type aliases
@@ -60,7 +64,7 @@ class ThresholdPolicy:
     Holds when price is in between.
 
     Example:
-        >>> from stochopt.problems.energy_storage.model import EnergyStorageModel, EnergyStorageConfig
+        >>> from problems.energy_storage.model import EnergyStorageModel, EnergyStorageConfig
         >>> config_model = EnergyStorageConfig()
         >>> model = EnergyStorageModel(config_model)
         >>> config_policy = ThresholdPolicyConfig(buy_threshold=40.0, sell_threshold=60.0)
@@ -69,7 +73,7 @@ class ThresholdPolicy:
 
     def __init__(
         self,
-        model: "EnergyStorageModel",  # type: ignore[name-defined]
+        model: "EnergyStorageModel",
         config: ThresholdPolicyConfig
     ) -> None:
         """Initialize policy.
@@ -134,7 +138,7 @@ class TimeOfDayPolicy:
 
     def __init__(
         self,
-        model: "EnergyStorageModel",  # type: ignore[name-defined]
+        model: "EnergyStorageModel",
         peak_start: int = 9,
         peak_end: int = 20,
         charge_rate: float = 0.5,
@@ -202,7 +206,7 @@ class MyopicPolicy:
 
     def __init__(
         self,
-        model: "EnergyStorageModel",  # type: ignore[name-defined]
+        model: "EnergyStorageModel",
         n_samples: int = 5
     ) -> None:
         """Initialize policy.
@@ -292,7 +296,7 @@ class LinearPolicy(nnx.Module):
         Returns:
             Decision.
         """
-        energy, cycles, hour = state[0], state[1], state[2]
+        energy, _cycles, hour = state[0], state[1], state[2]
 
         # Create feature vector
         features = jnp.array([
@@ -360,7 +364,7 @@ class NeuralPolicy(nnx.Module):
         Returns:
             Decision.
         """
-        energy, cycles, hour = state[0], state[1], state[2]
+        energy, _cycles, hour = state[0], state[1], state[2]
 
         # Create input features (normalized)
         x = jnp.array([

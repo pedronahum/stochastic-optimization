@@ -12,13 +12,13 @@ Decision: [step_size] - learning rate for gradient update
 Exogenous: demand - random demand realization
 """
 
-from typing import NamedTuple
 from functools import partial
-from jaxtyping import Array, Float, Int, PRNGKeyArray
+from typing import NamedTuple
+
+import chex
 import jax
 import jax.numpy as jnp
-import chex
-
+from jaxtyping import Array, Float, PRNGKeyArray
 
 # Type aliases
 State = Float[Array, "2"]  # [order_quantity, counter]
