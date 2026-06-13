@@ -1,435 +1,248 @@
 # Stochastic Optimization Library
 
-A modern JAX-native library for sequential decision-making problems under uncertainty.
-
-**Princeton University - Castle Lab**
+A modern **JAX-native** library of sequential decision-making problems under
+uncertainty — faithful reimplementations of the classic problems from Warren
+Powell's [stochastic-optimization](https://github.com/wbpowell328/stochastic-optimization)
+course (Princeton, Castle Lab), modernized for GPU/TPU, autodiff, and type safety.
 
 ---
 
-## 🚀 Modern JAX-Native Implementation (2025)
+## ✨ Highlights
 
-This library has been completely modernized with:
-- ✅ **JAX-native implementations** - Full GPU/TPU acceleration support
-- ✅ **JIT compilation** - Optimized performance with XLA
-- ✅ **Automatic differentiation** - End-to-end gradient computation
-- ✅ **Type safety** - 100% mypy strict compliance
-- ✅ **Comprehensive testing** - 230+ tests with 100% pass rate
-- ✅ **Functional programming** - Immutable state, pure functions
+- ✅ **JAX-native** — JIT-compiled, vectorizable (`vmap`), GPU/TPU-ready
+- ✅ **9 problems**, each with a unified `model` / `policy` API
+- ✅ **Faithful to the originals** — the new code is benchmarked for *parity*
+  against Powell's reference implementations in `legacy/` (see
+  [`benchmarks/PARITY.md`](benchmarks/PARITY.md)); 8/9 match exactly or
+  analytically, blood management matches the reference LP to ~1e-2
+- ✅ **Typed** — `flax.struct` configs; mypy strict-clean on `core/` + `problems/`
+- ✅ **Tested** — 212 tests; ruff-clean
 
 ---
 
 ## 📦 Installation
 
-### Requirements
-- Python 3.10+
-- JAX 0.4+
-- jaxtyping
-- chex
-- numpy
-- pytest (for development)
-
-### Install from source
+Requires **Python ≥ 3.11**. Core dependencies: `jax`, `jaxlib`, `flax`,
+`optax`, `chex`, `jaxtyping`, and `ott-jax` (entropic OT, used by blood
+management).
 
 ```bash
 git clone https://github.com/pedronahum/stochastic-optimization.git
 cd stochastic-optimization
-pip install -e .
+pip install -e .            # CPU
+# GPU: install the matching jaxlib, e.g. pip install "jax[cuda13]"
 ```
 
-### Dependencies
+Optional extras: `.[viz]` (matplotlib + networkx for the notebooks), `.[dev]`
+(ruff, mypy, pytest, …).
 
-```bash
-pip install jax jaxlib jaxtyping chex numpy pytest
-```
+> **Note:** on unified-memory GPUs, run with `JAX_PLATFORMS=cpu` for the small
+> models/tests to avoid JAX over-preallocating the shared memory pool.
 
 ---
 
-## 📓 Interactive Notebooks Gallery
+## 🚀 Quickstart
 
-Explore problems interactively with our Jupyter notebooks - all runnable in Google Colab with one click:
+```python
+import jax
+from problems.asset_selling import AssetSellingConfig, AssetSellingModel, SellLowPolicy
 
-| Problem | Notebook | Description |
-|---------|----------|-------------|
-| **Blood Management** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb) | Blood bank inventory with 8 types, aging, substitution rules |
-| **Clinical Trials** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/clinical_trials.ipynb) | Adaptive dose optimization for patient outcomes |
-| **SSP Dynamic** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_dynamic.ipynb) | Shortest path with lookahead and cost estimation |
-| **SSP Static** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_static.ipynb) | Classical shortest path with percentile risk |
-| **Market Planning** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/adaptive_market_planning.ipynb) | Dynamic pricing and demand forecasting |
-| **Diabetes Management** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/medical_decision_diabetes.ipynb) | Glucose-insulin dynamics for diabetes treatment |
-| **Two Newsvendor** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/two_newsvendor.ipynb) | Multi-agent inventory coordination |
-| **Asset Selling** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/asset_selling.ipynb) | Optimal liquidation with price dynamics |
-| **Energy Storage** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/energy_storage.ipynb) | Battery management with price arbitrage |
+model = AssetSellingModel(AssetSellingConfig(initial_price=100.0, up_step=2.0, down_step=-2.0))
+policy = SellLowPolicy(threshold=95.0)
 
-See [notebooks/README.md](notebooks/README.md) for detailed descriptions and learning paths.
+key = jax.random.PRNGKey(0)
+state = model.init_state(key)
+decision = policy(None, state, key)          # sell / hold
+exog = model.sample_exogenous(key, state, 0)
+reward = model.reward(state, decision, exog)
+state = model.transition(state, decision, exog)
+```
+
+Every problem follows the same shape:
+
+```python
+class Model:
+    def init_state(self, key) -> State: ...
+    def transition(self, state, decision, exog) -> State: ...
+    def reward(self, state, decision, exog) -> Reward: ...
+    def sample_exogenous(self, key, state, time) -> ExogenousInfo: ...
+```
+
+Most policies are called as `policy(params, state, key)`. A few problems whose
+decision depends on the realised exogenous data or the model take extra
+arguments — e.g. blood management's `OTAllocationPolicy(model)` is called
+`policy(None, state, key, demand)`.
+
+---
+
+## 📓 Notebooks
+
+One-click runnable in Google Colab (each notebook clones this repo and installs
+deps):
+
+| Problem | Colab |
+|---|---|
+| Blood Management | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb) |
+| Clinical Trials | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/clinical_trials.ipynb) |
+| SSP Dynamic | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_dynamic.ipynb) |
+| SSP Static | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_static.ipynb) |
+| Adaptive Market Planning | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/adaptive_market_planning.ipynb) |
+| Medical Decision (Diabetes) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/medical_decision_diabetes.ipynb) |
+| Two Newsvendor | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/two_newsvendor.ipynb) |
+| Asset Selling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/asset_selling.ipynb) |
+| Energy Storage | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/energy_storage.ipynb) |
+
+Training scripts live in [`examples/`](examples/) (`train_asset_selling.py`,
+`train_clinical.py`, `train_energy_storage.py`).
 
 ---
 
 ## 🎯 Problem Domains
 
-The library includes 9 fully-implemented stochastic optimization problems:
+Nine problems under `problems/`. Each has `model.py`, `policy.py`, `__init__.py`.
 
-### 1. Clinical Trials
-**Path**: `problems/clinical_trials/`
-
-Adaptive dose optimization for clinical trial design with patient outcomes and safety constraints.
-
-**Features**: Dose-response modeling, adaptive trial design, patient safety constraints
-**Tests**: 22/22 passing
-**Policies**: LinearDosePolicy
-
-```python
-from problems.clinical_trials import Config, ClinicalTrialsModel
-
-config = Config(horizon=50, mu=0.1, sigma=0.5)
-model = ClinicalTrialsModel(config)
-```
-
----
-
-### 2. Stochastic Shortest Path - Dynamic
-**Path**: `problems/ssp_dynamic/`
-
-Multi-step lookahead path planning with time-varying costs and running average estimation.
-
-**Features**: Dynamic programming, risk-sensitive policies, cost estimation
-**Tests**: 39/39 passing
-**Policies**: LookaheadPolicy, GreedyLookaheadPolicy, RandomPolicy
-
-```python
-from problems.ssp_dynamic import SSPDynamicConfig, SSPDynamicModel
-
-config = SSPDynamicConfig(n_nodes=10, horizon=15)
-model = SSPDynamicModel(config)
-```
-
----
-
-### 3. Stochastic Shortest Path - Static
-**Path**: `problems/ssp_static/`
-
-Classical shortest path with static graph structure and percentile-based risk measures.
-
-**Features**: Bellman-Ford algorithm, percentile optimization, risk sensitivity
-**Tests**: 34/34 passing
-**Policies**: ShortestPathPolicy, RandomPolicy
-
-```python
-from problems.ssp_static import SSPStaticConfig, SSPStaticModel
-
-config = SSPStaticConfig(n_nodes=8, edge_prob=0.3)
-model = SSPStaticModel(config)
-```
-
----
-
-### 4. Adaptive Market Planning
-**Path**: `problems/adaptive_market_planning/`
-
-Dynamic pricing and demand forecasting with market adaptation.
-
-**Features**: Price optimization, demand modeling, market dynamics
-**Tests**: 29/29 passing
-**Policies**: NeuralPolicy, heuristic policies
-
+### Adaptive Market Planning — `problems/adaptive_market_planning/`
+Newsvendor order-quantity learning by stochastic gradient ascent; converges to
+the analytic optimum `q* = μ·ln(p/c)` for exponential demand.
+Policies: `HarmonicStepPolicy`, `KestenStepPolicy`, `ConstantStepPolicy`,
+`AdaptiveStepPolicy`, `NeuralStepPolicy`.
 ```python
 from problems.adaptive_market_planning import AdaptiveMarketPlanningConfig, AdaptiveMarketPlanningModel
-
-config = AdaptiveMarketPlanningConfig(price=1.5, cost=0.8, demand_mean=100.0)
-model = AdaptiveMarketPlanningModel(config)
+model = AdaptiveMarketPlanningModel(AdaptiveMarketPlanningConfig(price=1.5, cost=0.8, demand_mean=100.0))
 ```
 
----
-
-### 5. Medical Decision - Diabetes
-**Path**: `problems/medical_decision_diabetes/`
-
-Glucose-insulin dynamics for diabetes management with meal planning and health monitoring.
-
-**Features**: Physiological modeling, treatment policies, health state tracking
-**Tests**: 25/25 passing
-**Policies**: Multiple treatment strategies
-
-```python
-from problems.medical_decision_diabetes import MedicalDecisionDiabetesConfig, MedicalDecisionDiabetesModel
-
-config = MedicalDecisionDiabetesConfig(n_drugs=5, initial_mu=0.5)
-model = MedicalDecisionDiabetesModel(config)
-```
-
----
-
-### 6. Two Newsvendor
-**Path**: `problems/two_newsvendor/`
-
-Multi-agent inventory coordination with demand uncertainty and allocation strategies.
-
-**Features**: Coordination mechanisms, inventory allocation, demand forecasting
-**Tests**: 37/37 passing
-**Policies**: NewsvendorFieldPolicy, NeuralPolicies, coordination strategies
-
-```python
-from problems.two_newsvendor import TwoNewsvendorConfig, TwoNewsvendorFieldModel
-
-config = TwoNewsvendorConfig(demand_lower=0.0, demand_upper=100.0)
-model = TwoNewsvendorFieldModel(config)
-```
-
----
-
-### 7. Asset Selling
-**Path**: `problems/asset_selling/`
-
-Optimal asset liquidation with price dynamics and market volatility.
-
-**Features**: Price processes, optimal stopping, market timing
-**Tests**: 23/23 passing
-**Policies**: Threshold policies, time-based strategies
-
+### Asset Selling — `problems/asset_selling/`
+Optimal stopping: when to sell an asset whose price follows a Markov-modulated
+random walk. Policies: `SellLowPolicy`, `HighLowPolicy`, `ExpectedValuePolicy`,
+`LinearThresholdPolicy`, `NeuralPolicy`, `AlwaysHold/AlwaysSell`.
 ```python
 from problems.asset_selling import AssetSellingConfig, AssetSellingModel
-
-config = AssetSellingConfig(initial_price=100.0, up_step=2.0, down_step=-2.0)
-model = AssetSellingModel(config)
+model = AssetSellingModel(AssetSellingConfig(initial_price=100.0, up_step=2.0, down_step=-2.0))
 ```
 
----
-
-### 8. Energy Storage
-**Path**: `problems/energy_storage/`
-
-Battery management with price arbitrage and capacity constraints.
-
-**Features**: Battery dynamics, price-based charging, capacity management
-**Tests**: 20/20 passing
-**Policies**: Price-based policies, threshold strategies
-
+### Blood Management — `problems/blood_management/`
+Blood-bank inventory: 8 types with ABO/Rh substitution, FIFO aging, urgent/
+elective demand, surges. The per-period allocation is the original min-cost-flow
+LP, solved JAX-natively by **entropic OT** (`OTAllocationPolicy`, via `ott-jax`).
+The full **ADP** (Powell SPAR/CAVE — learned concave value-of-holding) is in
+`adp.py` (`train_spar`, `ADPPolicy`). Baselines: `GreedyPolicy`, `FIFOPolicy`,
+`RandomPolicy`.
 ```python
-from problems.energy_storage import EnergyStorageConfig, EnergyStorageModel
-
-config = EnergyStorageConfig(capacity=100.0, initial_energy=50.0)
-model = EnergyStorageModel(config)
+from problems.blood_management import BloodManagementConfig, BloodManagementModel, OTAllocationPolicy
+model = BloodManagementModel(BloodManagementConfig(max_age=5, surge_prob=0.1))
 ```
 
----
-
-### 9. Blood Management
-**Path**: `problems/blood_management/`
-
-Blood bank inventory optimization with age-dependent inventory, blood type substitution, and stochastic demand.
-
-**Features**: 8 blood types with substitution rules, FIFO aging, urgent/elective demands, surge events
-**Tests**: 21/21 passing
-**Policies**: GreedyPolicy, FIFOPolicy, RandomPolicy
-
+### Clinical Trials — `problems/clinical_trials/`
+Drug-program enrollment MDP: decide how many patients to enroll and whether to
+continue or stop (declaring success/failure), tracking a Beta(success, failure)
+belief. State `[potential_pop, success, failure, l_response]`.
+Policies: `StoppingPolicy`, `FixedEnrollPolicy`.
 ```python
-from problems.blood_management import BloodManagementConfig, BloodManagementModel
-
-config = BloodManagementConfig(max_age=5, surge_prob=0.1)
-model = BloodManagementModel(config)
+from problems.clinical_trials import Config, ClinicalTrialsModel, StoppingPolicy
+model = ClinicalTrialsModel(Config())   # success_rev, program/patient cost, stop thresholds, …
 ```
 
----
-
-## 🏗️ Architecture
-
-All problems follow a consistent API:
-
-### Model Interface
+### Energy Storage — `problems/energy_storage/`
+Battery arbitrage against an exogenous price series (historically PJM RT LMP):
+buy/sell to maximise `price·(η·sell − buy)`. Policy: `BuyLowSellHighPolicy`
+(grid-searchable via `grid_search`), `AlwaysHoldPolicy`.
 ```python
-class Model:
-    def init_state(self, key: PRNGKey) -> State:
-        """Initialize state."""
-
-    def transition(self, state: State, decision: Decision, exog: ExogenousInfo) -> State:
-        """State transition dynamics."""
-
-    def reward(self, state: State, decision: Decision, exog: ExogenousInfo) -> Reward:
-        """Reward/cost function."""
-
-    def sample_exogenous(self, key: PRNGKey, state: State, time: int) -> ExogenousInfo:
-        """Sample random exogenous information."""
-```
-
-### Policy Interface
-```python
-class Policy:
-    def __call__(self, params: PyTree, state: State, key: PRNGKey, model: Model) -> Decision:
-        """Compute decision given current state."""
-```
-
----
-
-## 📊 Testing
-
-Run all tests:
-```bash
-pytest tests/ -v
-```
-
-Run specific problem tests:
-```bash
-pytest tests/test_blood_management.py -v
-```
-
-Check type safety:
-```bash
-mypy problems/ --strict
-```
-
-**Current Status**:
-- ✅ 230/230 tests passing
-- ✅ 100% mypy strict compliance
-- ✅ 28 source files
-
----
-
-## 🔬 Example Usage
-
-### Running a Full Episode
-
-```python
-import jax
 import jax.numpy as jnp
-from stochopt.problems.blood_management import (
-    BloodManagementConfig,
-    BloodManagementModel,
-    GreedyPolicy
-)
-
-# Initialize
-config = BloodManagementConfig(max_age=5)
-model = BloodManagementModel(config)
-policy = GreedyPolicy()
-
-key = jax.random.PRNGKey(42)
-state = model.init_state(key)
-
-# Run episode
-total_reward = 0.0
-for t in range(30):
-    # Get decision from policy
-    key, subkey = jax.random.split(key)
-    decision = policy(None, state, subkey, model)
-
-    # Sample exogenous information
-    key, subkey = jax.random.split(key)
-    exog = model.sample_exogenous(subkey, state, t)
-
-    # Get reward and transition
-    reward = model.reward(state, decision, exog)
-    total_reward += float(reward)
-
-    state = model.transition(state, decision, exog)
-
-print(f"Total reward: {total_reward:.2f}")
+from problems.energy_storage import EnergyStorageConfig, EnergyStorageModel
+model = EnergyStorageModel(EnergyStorageConfig(eta=0.9, capacity=1.0), prices=jnp.array([20., 50., 15.]))
 ```
 
-### Using JAX Transformations
-
+### Medical Decision — Diabetes — `problems/medical_decision_diabetes/`
+Bayesian **multi-armed bandit** for choosing among drugs, with conjugate
+Normal belief updates. Policies: `UCBPolicy`, `IntervalEstimationPolicy`,
+`ThompsonSamplingPolicy`, `EpsilonGreedyPolicy`, `PureExploration/Exploitation`.
 ```python
-# JIT compilation
-@jax.jit
-def rollout_step(state, key, model, policy):
-    key1, key2 = jax.random.split(key)
-    decision = policy(None, state, key1, model)
-    exog = model.sample_exogenous(key2, state, 0)
-    reward = model.reward(state, decision, exog)
-    next_state = model.transition(state, decision, exog)
-    return next_state, reward
+from problems.medical_decision_diabetes import MedicalDecisionDiabetesConfig, MedicalDecisionDiabetesModel
+model = MedicalDecisionDiabetesModel(MedicalDecisionDiabetesConfig(n_drugs=5))
+```
 
-# Vectorization with vmap
-batch_rollout = jax.vmap(rollout_step, in_axes=(0, 0, None, None))
+### Stochastic Shortest Path — Dynamic — `problems/ssp_dynamic/`
+Risk-sensitive lookahead routing on a graph with stochastic edge costs; the
+lookahead reproduces Dijkstra shortest paths. Policies: `LookaheadPolicy`,
+`GreedyLookaheadPolicy`, `RandomPolicy`.
+```python
+from problems.ssp_dynamic import SSPDynamicConfig, SSPDynamicModel
+model = SSPDynamicModel(SSPDynamicConfig(n_nodes=10, horizon=15))
+```
+
+### Stochastic Shortest Path — Static — `problems/ssp_static/`
+Shortest path with online value-function learning. Policies: `GreedyPolicy`,
+`EpsilonGreedyPolicy`, `BellmanGreedyPolicy`, `RandomPolicy`.
+```python
+from problems.ssp_static import SSPStaticConfig, SSPStaticModel
+model = SSPStaticModel(SSPStaticConfig(n_nodes=8, edge_prob=0.3))
+```
+
+### Two Newsvendor — `problems/two_newsvendor/`
+Two-agent (field/central) newsvendor coordination with biased demand estimates.
+Policies: `NewsvendorFieldPolicy`, `BiasAdjustedFieldPolicy`,
+`NewsvendorCentralPolicy`, `BiasAdjustedCentralPolicy`, `Neural*`,
+`AlwaysAllocateRequestedPolicy`.
+```python
+from problems.two_newsvendor import TwoNewsvendorConfig, TwoNewsvendorFieldModel
+model = TwoNewsvendorFieldModel(TwoNewsvendorConfig(demand_lower=0.0, demand_upper=100.0))
 ```
 
 ---
 
-## 📈 Modernization Achievements (2024)
+## ✅ Parity with the originals — `benchmarks/`
 
-### From NumPy to JAX
-- **Before**: NumPy-based implementations with limited performance
-- **After**: JAX-native with GPU/TPU support and automatic differentiation
+The original Powell implementations are archived in `legacy/old_problems/`. The
+benchmark suite checks the new JAX code against them rather than trusting it
+blindly:
 
-### Type Safety
-- **Before**: Minimal type hints, runtime errors
-- **After**: 100% mypy strict compliance, compile-time error detection
+```bash
+JAX_PLATFORMS=cpu python benchmarks/parity.py        # deterministic / analytical parity, all 9
+JAX_PLATFORMS=cpu MPLBACKEND=Agg python benchmarks/run_notebooks.py   # run all notebooks headless
+```
 
-### Testing
-- **Before**: Limited test coverage
-- **After**: 230+ comprehensive tests, 100% pass rate
-
-### Performance
-- **Before**: Python loops, CPU-only
-- **After**: JIT-compiled, vectorized, hardware-accelerated
-
-### Code Quality
-- **Before**: Inconsistent APIs across problems
-- **After**: Unified API, consistent patterns, extensive documentation
+`benchmarks/PARITY.md` documents the methodology and results: 8/9 problems match
+the originals' `transition`/`reward`/closed-form policies exactly (or hit the
+known analytical optimum); blood management's allocation matches the reference
+LP to ~1e-2 (entropic OT), and its ADP value functions reproduce the SPAR
+behaviour (concave, and beating the myopic allocation).
 
 ---
 
-## 📚 Documentation
+## 🧪 Testing & quality
 
-Each problem directory contains:
-- `model.py` - Core dynamics implementation
-- `policy.py` - Policy implementations
-- `__init__.py` - Public API exports
+```bash
+JAX_PLATFORMS=cpu pytest tests/ -q            # 212 tests
+mypy --python-executable .venv/bin/python core problems   # strict-clean
+ruff check .
+```
 
-Test files located in `tests/`:
-- `test_<problem>.py` - Comprehensive test suites
-
----
-
-## 🗂️ Legacy Code
-
-Original implementations are archived in the `legacy/` directory for historical reference. See [legacy/README.md](legacy/README.md) for details.
-
-**All new development should use the JAX-native implementations in `stochopt/`.**
+mypy must see the deps installed (jax/jaxtyping ship `py.typed`), otherwise the
+shape-alias types collapse to `Any`; point it at the env's interpreter as above.
 
 ---
 
-## 👥 Contributors
+## 🗂️ Repository layout
 
-### Original Implementation (Pre-2024)
-- Donghun Lee: d.lee@princeton.edu (dhl)
-- Grace Lee: gylee@princeton.edu (or gayeonglee95@gmail.com) (gl)
-- Joy Hii: jhii@princeton.edu (jh)
-- Robert Raveanu: rraveanu@princeton.edu (rr)
-- Raluca Cobzaru: rcobzaru@princeton.edu
-- Juilana Nascimento: jnascime@princeton.edu (jn)
-- And others (agraur, ckn)
-
-### JAX Migration (2024)
-- Complete modernization to JAX-native implementation
-- 100% test coverage and type safety
-- Performance optimization and API unification
+```
+core/        # shared simulator / protocols
+problems/    # the 9 JAX-native problems (model.py, policy.py)
+examples/    # training / demo scripts
+notebooks/   # Colab-runnable notebooks
+benchmarks/  # parity vs. the originals + notebook runner + PARITY.md
+legacy/      # archived original Powell implementations (reference only)
+```
 
 ---
+
+## 👥 Credits
+
+The problems originate from Warren Powell's *Sequential Decision Analytics*
+course code (Princeton, Castle Lab) — original authors include Donghun Lee,
+Grace Lee, Joy Hii, Robert Raveanu, Raluca Cobzaru, Juliana Nascimento, and
+others. This repository is a JAX-native reimplementation that has been
+benchmarked for parity against those originals.
 
 ## 📄 License
 
-See [LICENSE](LICENSE) file for details.
-
----
-
-## 🔗 Citation
-
-If you use this library in your research, please cite:
-
-```bibtex
-@software{stochastic_optimization_jax,
-  title = {Stochastic Optimization Library (JAX)},
-  author = {Castle Lab, Princeton University},
-  year = {2024},
-  url = {https://github.com/pedronahum/stochastic-optimization}
-}
-```
-
----
-
-## 🎓 Princeton University - Castle Lab
-
-Sequential Decision Problem Modeling Library
-**Castle Lab**
-Princeton University
-
-For more information, visit [Castle Lab](https://castlelab.princeton.edu/)
+See [LICENSE](LICENSE).
