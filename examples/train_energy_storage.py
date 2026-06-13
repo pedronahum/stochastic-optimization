@@ -159,12 +159,14 @@ def reinforce_update(
         # Return negative mean reward (minimize)
         return -jnp.mean(rewards)
 
-    # Compute loss and gradients
+    # Compute loss and gradients (grads is an nnx.State matching the params)
     loss, grads = nnx.value_and_grad(loss_fn)(policy)
 
-    # Apply updates
-    updates = optimizer.update(grads, opt_state)
-    nnx.update(policy, updates)
+    # Apply updates: optax.update returns (updates, new_opt_state)
+    params = nnx.state(policy)
+    updates, opt_state = optimizer.update(grads, opt_state, params)
+    new_params = optax.apply_updates(params, updates)
+    nnx.update(policy, new_params)
 
     return policy, opt_state, -float(loss)  # Return positive reward
 
@@ -194,7 +196,7 @@ def train_linear_policy() -> None:
     num_iterations = 50
     eval_interval = 10
 
-    print(f"\nInitial weights: {policy.weights.value}")
+    print(f"\nInitial weights: {policy.weights[...]}")
 
     key = jax.random.PRNGKey(42)
 
@@ -213,7 +215,7 @@ def train_linear_policy() -> None:
             print(f"Iter {iteration:3d}: Train Reward = {mean_reward:8.2f} | "
                   f"Eval Reward = {eval_mean:8.2f} ± {eval_std:6.2f}")
 
-    print(f"\nFinal weights: {policy.weights.value}")
+    print(f"\nFinal weights: {policy.weights[...]}")
     print("=" * 70)
 
 

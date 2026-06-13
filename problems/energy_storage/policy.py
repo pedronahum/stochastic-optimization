@@ -303,7 +303,7 @@ class LinearPolicy(nnx.Module):
         ])
 
         # Linear combination
-        decision = jnp.dot(self.weights.value, features)
+        decision = jnp.dot(self.weights[...], features)
 
         return jnp.array([decision])
 
@@ -347,7 +347,7 @@ class NeuralPolicy(nnx.Module):
         # Output layer: single value (charge power)
         layers.append(nnx.Linear(prev_dim, 1, rngs=rngs))
 
-        self.layers = layers
+        self.layers = nnx.data(layers)
 
     def __call__(self, state: State, price: float, key: Key) -> Decision:
         """Get decision from neural network.

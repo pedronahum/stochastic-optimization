@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import chex
 from flax import nnx
 
-from stochopt.core import simulator as sim
+from core import simulator as sim
 from problems.clinical_trials import model, policy
 
 
@@ -212,7 +212,7 @@ def test_linear_dose_policy_initialization() -> None:
     assert isinstance(π, policy.LinearDosePolicy)
     assert hasattr(π, 'w')
     # Default weight should be 0.1
-    assert π.w.value == 0.1
+    assert π.w[...] == 0.1
 
 
 def test_linear_dose_policy_action() -> None:
@@ -241,7 +241,7 @@ def test_linear_dose_policy_action() -> None:
 def test_linear_dose_policy_custom_weight() -> None:
     """Test LinearDosePolicy with custom weight."""
     π = policy.LinearDosePolicy()
-    π.w.value = jnp.array(-0.5)  # Set custom weight
+    π.w[...] = jnp.array(-0.5)  # Set custom weight
 
     key = jax.random.PRNGKey(42)
     state = model.State(t=0, x=jnp.array(1.0))
@@ -286,7 +286,7 @@ def test_full_episode() -> None:
     cfg = model.Config(horizon=10, sigma=0.1, mu=0.0)
     mdl = model.ClinicalTrialsModel(cfg)
     π = policy.LinearDosePolicy()
-    π.w.value = jnp.array(-0.5)  # Corrective policy
+    π.w[...] = jnp.array(-0.5)  # Corrective policy
 
     key = jax.random.PRNGKey(42)
     state = mdl.reset(key=key)
@@ -314,7 +314,7 @@ def test_stability_with_corrective_policy() -> None:
     cfg = model.Config(horizon=20, sigma=0.1, mu=0.0)
     mdl = model.ClinicalTrialsModel(cfg)
     π = policy.LinearDosePolicy()
-    π.w.value = jnp.array(-0.5)  # Negative feedback
+    π.w[...] = jnp.array(-0.5)  # Negative feedback
 
     key = jax.random.PRNGKey(42)
     # Start with high health deviation
@@ -346,7 +346,7 @@ def test_instability_with_amplifying_policy() -> None:
     cfg = model.Config(horizon=15, sigma=0.1, mu=0.0)
     mdl = model.ClinicalTrialsModel(cfg)
     π = policy.LinearDosePolicy()
-    π.w.value = jnp.array(0.5)  # Positive feedback (bad!)
+    π.w[...] = jnp.array(0.5)  # Positive feedback (bad!)
 
     key = jax.random.PRNGKey(42)
     # Start with small deviation
@@ -395,7 +395,7 @@ def test_gradient_flow_through_policy() -> None:
     grads = nnx.grad(loss_fn)(π)
 
     # Check that gradient exists and is finite
-    chex.assert_tree_all_finite(π.w.value)
+    chex.assert_tree_all_finite(π.w[...])
 
 
 def test_policy_parameter_update() -> None:
@@ -404,13 +404,13 @@ def test_policy_parameter_update() -> None:
     mdl = model.ClinicalTrialsModel(cfg)
     π = policy.LinearDosePolicy()
 
-    initial_w = float(π.w.value)
+    initial_w = float(π.w[...])
     key = jax.random.PRNGKey(42)
     state = model.State(t=0, x=jnp.array(1.0))
 
     # Create optimizer
     import optax
-    optimizer = nnx.Optimizer(π, optax.adam(0.1))
+    optimizer = nnx.Optimizer(π, optax.adam(0.1), wrt=nnx.Param)
 
     # Define loss
     def loss_fn(policy_module: policy.LinearDosePolicy) -> jax.Array:
@@ -421,9 +421,9 @@ def test_policy_parameter_update() -> None:
     # Compute gradient and update
     loss = loss_fn(π)
     grad = nnx.grad(loss_fn)(π)
-    optimizer.update(grad)
+    optimizer.update(π, grad)
 
-    updated_w = float(π.w.value)
+    updated_w = float(π.w[...])
 
     # Weight should have changed after optimizer update
     assert updated_w != initial_w

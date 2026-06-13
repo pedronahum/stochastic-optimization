@@ -504,8 +504,8 @@ def test_gradient_flow_neural_policy() -> None:
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:
         if isinstance(layer, nnx.Linear):
-            chex.assert_tree_all_finite(layer.kernel.value)
-            chex.assert_tree_all_finite(layer.bias.value)
+            chex.assert_tree_all_finite(layer.kernel[...])
+            chex.assert_tree_all_finite(layer.bias[...])
 
 
 def test_vmap_neural_policy() -> None:

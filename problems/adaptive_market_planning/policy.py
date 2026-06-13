@@ -272,7 +272,7 @@ class NeuralStepPolicy(nnx.Module):
 
         layers.append(nnx.Linear(prev_dim, 1, rngs=rngs))
 
-        self.layers = layers
+        self.layers = nnx.data(layers)
 
     def __call__(self, state: State, key: Key) -> Decision:
         """Get step size from neural network.

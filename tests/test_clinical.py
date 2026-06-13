@@ -1,6 +1,6 @@
 import jax
 
-from stochopt.core import simulator as sim
+from core import simulator as sim
 from problems.clinical_trials import model, policy
 
 

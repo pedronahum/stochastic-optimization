@@ -364,7 +364,7 @@ def test_linear_policy() -> None:
 
     # Check that weights exist
     assert hasattr(policy, 'weights')
-    assert policy.weights.value.shape == (4,)
+    assert policy.weights[...].shape == (4,)
 
 
 def test_neural_policy() -> None:
@@ -429,7 +429,7 @@ def test_policy_gradient_flow() -> None:
 
     # Check that we got gradients
     assert 'weights' in grads
-    assert grads['weights'].value.shape == policy.weights.value.shape
+    assert grads['weights'][...].shape == policy.weights[...].shape
 
 
 # ============================================================================

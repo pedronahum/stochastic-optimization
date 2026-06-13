@@ -14,7 +14,6 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import nnx
-import matplotlib.pyplot as plt
 from typing import Dict
 
 from problems.asset_selling import (
@@ -24,6 +23,13 @@ from problems.asset_selling import (
     LinearThresholdPolicy,
     HighLowPolicy,
 )
+
+
+def as_state_key_policy(policy):
+    """Adapt a baseline ``(params, state, key)`` policy to the ``(state, key)``
+    calling convention used by the learnable nnx policies (and by
+    :func:`simulate_episode`)."""
+    return lambda state, key: policy(None, state, key)
 
 
 def simulate_episode(
@@ -45,12 +51,11 @@ def simulate_episode(
     Returns:
         Tuple of (total_discounted_reward, num_steps).
     """
-    state = model.init_state(key)
-    total_reward = 0.0
-    discount_factor = 1.0
+    init_state = model.init_state(key)
 
-    for t in range(horizon):
-        key, key_policy, key_exog = jax.random.split(key, 3)
+    def step(carry, t):
+        state, k, discount_factor, done = carry
+        k, key_policy, key_exog = jax.random.split(k, 3)
 
         # Get decision from policy
         decision = policy(state, key_policy)
@@ -58,26 +63,32 @@ def simulate_episode(
         # Sample exogenous information
         exog = model.sample_exogenous(key_exog, state, t)
 
-        # Get reward
-        reward = model.reward(state, decision, exog)
-        total_reward += float(reward) * discount_factor
-        discount_factor *= discount
+        # Discounted reward (reward is 0 after the asset has been sold)
+        reward = model.reward(state, decision, exog) * discount_factor
 
         # Transition
         next_state = model.transition(state, decision, exog)
 
-        # Check if sold (resource = 0)
-        if next_state[1] < 0.5:
-            # Sold, episode ends
-            return total_reward, t + 1
+        # Detect the selling step (resource goes from held -> sold) and count
+        # steps until (and including) the sale.
+        sold_now = (state[1] > 0.5) & (next_state[1] < 0.5)
+        counted = jnp.where(done, 0, 1)
 
-        state = next_state
+        return (
+            (next_state, k, discount_factor * discount, done | sold_now),
+            (reward, counted),
+        )
 
-    # Didn't sell within horizon - force sell at final price
-    final_reward = state[0] * discount_factor
-    total_reward += float(final_reward)
+    (final_state, _, final_discount, done), (rewards, counts) = jax.lax.scan(
+        step, (init_state, key, 1.0, jnp.array(False)), jnp.arange(horizon)
+    )
 
-    return total_reward, horizon
+    # Didn't sell within horizon - force sell at final price.
+    final_reward = jnp.where(done, 0.0, final_state[0] * final_discount)
+    total_reward = jnp.sum(rewards) + final_reward
+    num_steps = jnp.sum(counts)  # steps until the sale, or `horizon` if never sold
+
+    return total_reward, num_steps
 
 
 def batch_simulate_episodes(
@@ -159,8 +170,13 @@ def compute_reinforce_loss(
     Returns:
         Negative mean return (loss to minimize).
     """
-    stats = batch_simulate_episodes(model, policy, keys, horizon, discount)
-    return -stats["mean_reward"]  # Negative for minimization
+    # Vectorise over the batch of episode keys, keeping everything as JAX
+    # arrays (batch_simulate_episodes returns Python floats and so cannot be
+    # used inside a traced/jitted loss).
+    rewards, _ = jax.vmap(
+        lambda k: simulate_episode(model, policy, k, horizon, discount)
+    )(keys)
+    return -jnp.mean(rewards)  # Negative for minimization
 
 
 def train_neural_policy(
@@ -200,7 +216,7 @@ def train_neural_policy(
         loss, grads = nnx.value_and_grad(compute_reinforce_loss)(
             policy, model, keys, horizon, discount
         )
-        optimizer.update(grads)
+        optimizer.update(policy, grads)
         return loss
 
     print(f"Training Neural Network Policy")
@@ -258,7 +274,7 @@ def compare_policies(model: AssetSellingModel, key: jax.random.PRNGKey):
     results = {}
     for name, policy in policies.items():
         key, subkey = jax.random.split(key)
-        stats = evaluate_policy(model, policy, subkey, n_episodes=1000)
+        stats = evaluate_policy(model, as_state_key_policy(policy), subkey, n_episodes=1000)
         results[name] = stats
 
         print(f"\n{name}:")
@@ -281,6 +297,13 @@ def plot_training_results(
         eval_every: Evaluation frequency.
         n_iterations: Total iterations.
     """
+    try:
+        import matplotlib.pyplot as plt  # optional dependency (install with `.[viz]`)
+    except ImportError:
+        print("\n[skip] matplotlib not installed; skipping training plot. "
+              "Install with `pip install '.[viz]'` to enable.")
+        return
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     # Plot loss
@@ -369,7 +392,7 @@ def main():
 
     # Create optimizer
     learning_rate = 1e-3
-    optimizer = nnx.Optimizer(neural_policy, optax.adam(learning_rate))
+    optimizer = nnx.Optimizer(neural_policy, optax.adam(learning_rate), wrt=nnx.Param)
 
     # Train
     key, subkey = jax.random.split(key)

@@ -297,7 +297,7 @@ class NeuralFieldPolicy(nnx.Module):
 
         layers.append(nnx.Linear(prev_dim, 1, rngs=rngs))
 
-        self.layers = layers
+        self.layers = nnx.data(layers)
 
     def __call__(self, state: StateField, key: Key) -> DecisionField:
         """Get decision from neural network.
@@ -356,7 +356,7 @@ class NeuralCentralPolicy(nnx.Module):
 
         layers.append(nnx.Linear(prev_dim, 1, rngs=rngs))
 
-        self.layers = layers
+        self.layers = nnx.data(layers)
 
     def __call__(
         self,

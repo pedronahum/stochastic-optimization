@@ -254,8 +254,8 @@ class LinearThresholdPolicy(nnx.Module):
         bias_onehot = jax.nn.one_hot(bias_idx_int, 3)
 
         # Compute threshold: w[0] is base, w[1:] are adjustments
-        base_threshold = self.weights.value[0]
-        bias_adjustment = jnp.dot(bias_onehot, self.weights.value)
+        base_threshold = self.weights[...][0]
+        bias_adjustment = jnp.dot(bias_onehot, self.weights[...])
 
         threshold = base_threshold + bias_adjustment
 
@@ -316,7 +316,7 @@ class NeuralPolicy(nnx.Module):
         # Output layer: single logit for selling probability
         layers.append(nnx.Linear(prev_dim, 1, rngs=rngs))
 
-        self.layers = layers
+        self.layers = nnx.data(layers)
 
     def __call__(self, state: State, key: Key) -> Decision:
         """Get decision from neural network.
@@ -439,7 +439,7 @@ if __name__ == "__main__":
     print("-" * 70)
     policy_lt = LinearThresholdPolicy(rngs=nnx.Rngs(42))
 
-    print(f"  Learned weights: {policy_lt.weights.value}")
+    print(f"  Learned weights: {policy_lt.weights[...]}")
 
     for name, state in [("Low price", state_low), ("Mid price", state_mid), ("High price", state_high)]:
         decision = policy_lt(state, key)
