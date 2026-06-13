@@ -355,7 +355,7 @@ def plot_training_results(
 def main() -> None:
     """Main training script."""
     # Configuration
-    config = AssetSellingConfig(  # type: ignore[call-arg]  # chex.dataclass __init__ not seen by mypy
+    config = AssetSellingConfig(
         up_step=2.0,
         down_step=-2.0,
         variance=2.0,

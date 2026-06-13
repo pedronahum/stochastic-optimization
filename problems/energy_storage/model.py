@@ -15,9 +15,9 @@ Key features:
 from functools import partial
 from typing import Any, NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
+from flax import struct
 from jaxtyping import Array, Bool, Float, PRNGKeyArray
 
 # Type aliases
@@ -40,7 +40,7 @@ class ExogenousInfo(NamedTuple):
     renewable: Float[Array, ""]
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class EnergyStorageConfig:
     """Configuration for energy storage model.
 

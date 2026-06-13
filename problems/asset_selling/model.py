@@ -17,6 +17,7 @@ from typing import Any, List, NamedTuple, Optional
 import chex
 import jax
 import jax.numpy as jnp
+from flax import struct
 from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray
 
 # Type aliases
@@ -37,7 +38,7 @@ class ExogenousInfo(NamedTuple):
     new_bias_idx: Int[Array, ""]
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class AssetSellingConfig:
     """Configuration for asset selling model.
 
@@ -316,7 +317,7 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # Create model with default configuration
-    config = AssetSellingConfig(  # type: ignore[call-arg]  # chex.dataclass __init__ not seen by mypy
+    config = AssetSellingConfig(
         up_step=2.0,
         down_step=-2.0,
         variance=1.5,

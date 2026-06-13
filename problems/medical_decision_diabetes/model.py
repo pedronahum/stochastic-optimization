@@ -23,9 +23,9 @@ Exogenous: Observed A1C reduction (true_mu + measurement_noise)
 from functools import partial
 from typing import NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
+from flax import struct
 from jaxtyping import Array, Float, Int, PRNGKeyArray
 
 # Type aliases
@@ -49,7 +49,7 @@ class ExogenousInfo(NamedTuple):
     measurement_precision: Float[Array, ""]
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class MedicalDecisionDiabetesConfig:
     """Configuration for Medical Decision Diabetes model.
 

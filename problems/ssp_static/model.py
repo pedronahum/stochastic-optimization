@@ -17,9 +17,9 @@ Exogenous: Sampled edge costs from uniform distributions
 from functools import partial
 from typing import NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
+from flax import struct
 from jaxtyping import Array, Bool, Float, Int, PRNGKeyArray
 
 # Type aliases
@@ -38,7 +38,7 @@ class ExogenousInfo(NamedTuple):
     edge_costs: Float[Array, "..."]  # Costs to neighbors
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class SSPStaticConfig:
     """Configuration for SSP Static model.
 

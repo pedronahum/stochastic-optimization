@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, List, Optional
 import chex
 import jax
 import jax.numpy as jnp
-from flax import nnx
+from flax import nnx, struct
 from jaxtyping import Array, Float, Int, PRNGKeyArray, PyTree
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ Decision = Int[Array, "1"]  # [sell]
 Key = PRNGKeyArray
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class ThresholdPolicyConfig:
     """Configuration for threshold-based policies.
 

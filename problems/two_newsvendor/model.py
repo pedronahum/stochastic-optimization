@@ -14,9 +14,9 @@ Exogenous: True demand and noisy demand estimates
 from functools import partial
 from typing import NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
+from flax import struct
 from jaxtyping import Array, Float, PRNGKeyArray
 
 # Type aliases
@@ -42,7 +42,7 @@ class ExogenousInfo(NamedTuple):
     estimate_central: Float[Array, ""]
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class TwoNewsvendorConfig:
     """Configuration for Two Newsvendor model.
 

@@ -15,9 +15,9 @@ Exogenous: demand - random demand realization
 from functools import partial
 from typing import NamedTuple
 
-import chex
 import jax
 import jax.numpy as jnp
+from flax import struct
 from jaxtyping import Array, Float, PRNGKeyArray
 
 # Type aliases
@@ -38,7 +38,7 @@ class ExogenousInfo(NamedTuple):
     previous_derivative: Float[Array, ""]
 
 
-@chex.dataclass(frozen=True)
+@struct.dataclass
 class AdaptiveMarketPlanningConfig:
     """Configuration for Adaptive Market Planning model.
 
