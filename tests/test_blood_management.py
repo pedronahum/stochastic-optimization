@@ -115,7 +115,6 @@ def test_transition_ages_blood() -> None:
     """Test that transition correctly ages blood."""
     config = BloodManagementConfig(max_age=3)
     model = BloodManagementModel(config)
-    _key = jax.random.PRNGKey(42)
 
     # Create state with known inventory
     inventory = jnp.array([

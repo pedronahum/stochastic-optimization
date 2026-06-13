@@ -35,3 +35,8 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["problems*", "tests*", "examples*", "core*"]
+
+[tool.setuptools.package-data]
+# PEP 561 markers so downstream importers get the inline type hints.
+core = ["py.typed"]
+problems = ["py.typed"]

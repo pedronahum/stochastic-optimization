@@ -390,11 +390,9 @@ def test_gradient_flow_through_policy() -> None:
         _, reward = mdl.step(state, action, key=key)
         return -reward  # Minimize negative reward (maximize reward)
 
-    # Compute gradients
-    _grads = nnx.grad(loss_fn)(π)
-
-    # Check that gradient exists and is finite
-    chex.assert_tree_all_finite(π.w[...])
+    # Compute gradients and check they exist and are finite
+    grads = nnx.grad(loss_fn)(π)
+    chex.assert_tree_all_finite(grads)
 
 
 def test_policy_parameter_update() -> None:
@@ -418,7 +416,6 @@ def test_policy_parameter_update() -> None:
         return -reward
 
     # Compute gradient and update
-    _loss = loss_fn(π)
     grad = nnx.grad(loss_fn)(π)
     optimizer.update(π, grad)
 

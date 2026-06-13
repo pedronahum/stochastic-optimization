@@ -35,7 +35,7 @@ def as_state_key_policy(policy):
 def simulate_episode(
     model: AssetSellingModel,
     policy: nnx.Module,
-    key: jax.random.PRNGKey,
+    key: jax.Array,
     horizon: int = 10,
     discount: float = 0.99,
 ) -> tuple[float, int]:
@@ -94,7 +94,7 @@ def simulate_episode(
 def batch_simulate_episodes(
     model: AssetSellingModel,
     policy: nnx.Module,
-    keys: jax.random.PRNGKey,
+    keys: jax.Array,
     horizon: int = 10,
     discount: float = 0.99,
 ) -> Dict[str, float]:
@@ -129,7 +129,7 @@ def batch_simulate_episodes(
 def evaluate_policy(
     model: AssetSellingModel,
     policy: nnx.Module,
-    key: jax.random.PRNGKey,
+    key: jax.Array,
     n_episodes: int = 100,
     horizon: int = 10,
 ) -> Dict[str, float]:
@@ -152,7 +152,7 @@ def evaluate_policy(
 def compute_reinforce_loss(
     policy: nnx.Module,
     model: AssetSellingModel,
-    keys: jax.random.PRNGKey,
+    keys: jax.Array,
     horizon: int,
     discount: float,
 ) -> float:
@@ -183,7 +183,7 @@ def train_neural_policy(
     model: AssetSellingModel,
     policy: nnx.Module,
     optimizer: nnx.Optimizer,
-    key: jax.random.PRNGKey,
+    key: jax.Array,
     n_iterations: int = 1000,
     batch_size: int = 32,
     horizon: int = 10,
@@ -256,7 +256,7 @@ def train_neural_policy(
     return policy, loss_history
 
 
-def compare_policies(model: AssetSellingModel, key: jax.random.PRNGKey):
+def compare_policies(model: AssetSellingModel, key: jax.Array):
     """Compare different policies on the asset selling problem.
 
     Args:
@@ -352,10 +352,10 @@ def plot_training_results(
     plt.show()
 
 
-def main():
+def main() -> None:
     """Main training script."""
     # Configuration
-    config = AssetSellingConfig(
+    config = AssetSellingConfig(  # type: ignore[call-arg]  # chex.dataclass __init__ not seen by mypy
         up_step=2.0,
         down_step=-2.0,
         variance=2.0,

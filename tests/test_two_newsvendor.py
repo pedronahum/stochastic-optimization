@@ -132,7 +132,6 @@ def test_field_transition() -> None:
     """Test Field state transition."""
     config = TwoNewsvendorConfig(alpha_bias=0.1)
     model = TwoNewsvendorFieldModel(config)
-    _key = jax.random.PRNGKey(42)
 
     state = jnp.array([50.0, 5.0, -3.0])  # [estimate, source_bias, central_bias]
     decision = jnp.array([45.0])  # Request 45 units
@@ -701,8 +700,9 @@ def test_gradient_flow_neural_field_policy() -> None:
         reward = model.reward(state, decision, exog, allocated)
         return -reward  # Minimize cost
 
-    # Compute gradients
-    _grads = nnx.grad(loss_fn)(policy)
+    # Compute gradients and assert they are finite (gradients flow)
+    grads = nnx.grad(loss_fn)(policy)
+    chex.assert_tree_all_finite(grads)
 
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:
@@ -728,8 +728,9 @@ def test_gradient_flow_neural_central_policy() -> None:
         reward = model.reward(state, decision, exog)
         return -reward
 
-    # Compute gradients
-    _grads = nnx.grad(loss_fn)(policy)
+    # Compute gradients and assert they are finite (gradients flow)
+    grads = nnx.grad(loss_fn)(policy)
+    chex.assert_tree_all_finite(grads)
 
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:

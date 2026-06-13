@@ -342,7 +342,6 @@ def test_pure_exploitation_policy() -> None:
 def test_pure_exploration_policy() -> None:
     """Test Pure Exploration policy."""
     policy = PureExplorationPolicy(n_drugs=5)
-    _key = jax.random.PRNGKey(42)
 
     state = jnp.zeros((5, 3))  # State doesn't matter
 

@@ -12,7 +12,8 @@ Array = jax.Array
 
 class Model(Protocol):
     def reset(self, *, key: PRNGKey) -> Any: ...
-    def step(self, state: Any, action: Any, *, key: PRNGKey) -> Tuple[Any, float]: ...
+    # reward is a JAX scalar array (e.g. -|x|), not a Python float
+    def step(self, state: Any, action: Any, *, key: PRNGKey) -> Tuple[Any, Array]: ...
 
 
 class Policy(Protocol):

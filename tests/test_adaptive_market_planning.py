@@ -497,8 +497,9 @@ def test_gradient_flow_neural_policy() -> None:
         reward = model.reward(state, decision, exog)
         return -reward  # Minimize negative reward
 
-    # Compute gradients
-    _grads = nnx.grad(loss_fn)(policy)
+    # Compute gradients and assert they are finite (gradients flow)
+    grads = nnx.grad(loss_fn)(policy)
+    chex.assert_tree_all_finite(grads)
 
     # Check that gradients exist and are finite for all layers
     for layer in policy.layers:
