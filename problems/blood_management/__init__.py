@@ -18,6 +18,13 @@ Example:
     >>> model = BloodManagementModel(config)
 """
 
+from problems.blood_management.adp import (
+    ADPPolicy,
+    SPARConfig,
+    ValueFunction,
+    evaluate,
+    train_spar,
+)
 from problems.blood_management.model import (
     BLOOD_TYPES,
     BloodManagementConfig,
@@ -40,4 +47,10 @@ __all__ = [
     "GreedyPolicy",
     "FIFOPolicy",
     "RandomPolicy",
+    # SPAR / ADP
+    "SPARConfig",
+    "ValueFunction",
+    "ADPPolicy",
+    "train_spar",
+    "evaluate",
 ]

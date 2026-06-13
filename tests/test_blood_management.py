@@ -62,6 +62,31 @@ def test_ot_allocation_policy_matches_model() -> None:
     a_model = model.optimal_allocation(state[:-1], demand)
     assert jnp.allclose(a_policy, a_model)
 
+
+# ============================================================================
+# SPAR ADP (learned value-to-go — faithful to the original's value functions)
+# ============================================================================
+
+
+def test_spar_adp_concave_and_beats_myopic() -> None:
+    """Trained SPAR value functions are concave and the ADP beats myopic."""
+    import numpy as np
+
+    from problems.blood_management import SPARConfig, evaluate, train_spar
+
+    model = BloodManagementModel(BloodManagementConfig(max_age=3, surge_prob=0.2))
+    cfg = SPARConfig(horizon=5, n_links=20, n_iter=60, alpha=0.2)
+    vf = train_spar(model, cfg, seed=0)
+
+    # concavity: slopes are non-increasing within each (t, slot) value function
+    assert float(np.diff(vf.slopes, axis=2).max()) <= 1e-6
+    # learning happened: some positive value-to-go
+    assert float(vf.slopes.max()) > 0.0
+
+    myopic = evaluate(model, cfg, None, seed=123, n_paths=20)
+    adp = evaluate(model, cfg, vf, seed=123, n_paths=20)
+    assert adp >= myopic - 1e-6  # ADP never worse than myopic
+
 # ============================================================================
 # Configuration Tests
 # ============================================================================

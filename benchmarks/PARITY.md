@@ -84,7 +84,9 @@ Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
 | `clinical_trials` | **faithful port** | ✅ verified exact — drug-enrollment MDP: state `[potential_pop, success, failure, l_response]`, decision `[enroll, prog_continue, drug_success]`, original `transition_fn`/`objective_fn` reproduced. (Re-written from the earlier dose-control toy.) |
 | `blood_management` | **faithful port (approximate solve)** | ✅ verified close — the original per-period allocation **LP** (min-cost network flow, glpk) is reproduced with **entropic OT (Sinkhorn, `ott-jax`)**, JAX-native and differentiable. The OT objective matches the exact LP (scipy/HiGHS) to **~0.01** (gap from entropic regularisation). Original `contribution()` weights + ABO/RhD substitution rules used. |
 
-**Verdict:** all **9 of 9** problems are faithful ports passing executable parity — 8 exact/analytical, and `blood_management` matching the exact LP to ~0.01 via entropic OT. (The original blood code is also an ADP with *learned* value-to-go on holding edges; we reproduce the per-period allocation LP, not that learned value-function layer.)
+**Verdict:** all **9 of 9** problems are faithful ports passing executable parity — 8 exact/analytical, and `blood_management` matching the exact LP to ~0.01 via entropic OT.
+
+`blood_management` also reproduces the original's **ADP layer** (Powell's SPAR/CAVE) in `problems/blood_management/adp.py`: separable concave piecewise-linear value functions for the value-to-go of holding blood, trained by feeding the per-period LP dual (`vhat`) into a stepsize update with concavity projection. Parity here is **behavioural**, not numeric (learned value functions depend on RNG/stepsize/projection): the trained value functions come out concave and the ADP policy **beats the myopic OT allocation** (~4% more total contribution on surge-prone instances). The training LP uses exact duals (scipy/HiGHS, faithful to the original glpk).
 
 ### Why entropic OT for blood (and not jaxopt)
 
@@ -101,10 +103,11 @@ The blood allocation is a degenerate transportation LP. `jaxopt.BoxOSQP` (first-
    reward economics are correct (optimum at `q*=90`); the policy is suboptimal.
 4. **Notebooks are Colab-only** — they clone the published GitHub repo, so as
    shipped they never exercise local changes (acceptable per project owner).
-5. **`blood_management`** is now a faithful port: its per-period allocation LP
-   is solved with entropic OT (`ott-jax` Sinkhorn), matching the exact LP to
-   ~1e-2. (The original's *learned* value-to-go on holding edges — the ADP layer
-   — is not reproduced; only the per-period allocation.)
+5. **`blood_management`** is now a faithful port end-to-end: the per-period
+   allocation LP via entropic OT (`ott-jax` Sinkhorn, ~1e-2 of exact), **and**
+   the original's learned value-to-go via the SPAR/CAVE ADP
+   (`problems/blood_management/adp.py`) — concave PWL value functions trained
+   from LP duals; the ADP policy beats the myopic allocation.
 
 ## Reproduce
 
