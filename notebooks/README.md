@@ -4,6 +4,12 @@ Interactive tutorials for all 9 problems. Each notebook is self-contained and
 runs in Google Colab: the first cell installs dependencies and clones this repo,
 so no local setup is needed. Click a badge to open.
 
+> ⚠️ **Colab: restart the runtime once after the setup cell.** It upgrades
+> Colab's preinstalled `jax`/`jaxlib`, but the old jax stays loaded in the
+> kernel, so the next cell may raise a jax/jaxlib error
+> (`jit() missing 1 required positional argument: 'fun'`). Do
+> **Runtime → Restart session** and re-run; the setup cell is safe to re-run.
+
 | Problem | What it shows | Colab |
 |---|---|---|
 | **Blood Management** | OT allocation across 8 blood types (ABO/Rh substitution), inventory aging, surges | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb) |

@@ -80,6 +80,13 @@ arguments — e.g. blood management's `OTAllocationPolicy(model)` is called
 One-click runnable in Google Colab (each notebook clones this repo and installs
 deps):
 
+> ⚠️ **Colab: restart the runtime once after the setup cell.** The first cell
+> installs the package, which upgrades Colab's preinstalled `jax`/`jaxlib`. Colab
+> keeps the *old* jax loaded in the running kernel, so the next cell can fail with
+> a jax/jaxlib error (e.g. `jit() missing 1 required positional argument: 'fun'`).
+> Just do **Runtime → Restart session** and run the cells again — the setup cell
+> is safe to re-run, and after the restart everything imports cleanly.
+
 | Problem | Colab |
 |---|---|
 | Blood Management | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb) |
