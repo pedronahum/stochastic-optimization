@@ -21,7 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 cuda = ["jaxlib[cuda12_pip]"]         # users with GPUs can `pip install .[cuda]`
-viz = ["matplotlib>=3.7"]             # only needed to plot example training curves
+viz = ["matplotlib>=3.7", "networkx>=3.0"]  # plotting + SSP notebook graph viz
 dev = [
   "black>=24.4.2",
   "isort>=5.12.0",
