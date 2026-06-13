@@ -81,25 +81,25 @@ Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
 | `ssp_dynamic` | **faithful** (same SSP + lookahead) | ✅ verified — lookahead reproduces Dijkstra shortest-path decisions |
 | `ssp_static` | **faithful** (same SSP; online value-iteration learner) | ✅ verified — graph optimum matches Dijkstra/Bellman, reward charges edge cost. (The online learner itself is not run to convergence.) |
 | `energy_storage` | **faithful port** | ✅ verified exact — `(buy, sell)` decision, `transition energy' = energy + η·buy − sell`, `reward = price·(η·sell − buy)`, prices from the historical series. (Re-written from the earlier reformulation; the `$1000/cycle` degradation term was removed.) |
-| `blood_management` | **reformulation** | ⚠️ original optimises a min-cost network flow (`BloodManagementNetwork`, weights from `contribution()`); the new code evaluates a *given* allocation with a heuristic bonus/penalty reward. Objectives differ — only a behavioural sanity check is meaningful (fulfilling demand beats leaving it unmet ✓). |
-| `clinical_trials` | **reformulation — different problem** | ❌ parity N/A. The original models drug-program *enrollment* (potential population, success/failure counts, program revenue). The new `clinical_trials` is a scalar dose-control toy: `x_{t+1}=x_t+a+noise`, reward `−|x|`. They are not the same problem. |
+| `clinical_trials` | **faithful port** | ✅ verified exact — drug-enrollment MDP: state `[potential_pop, success, failure, l_response]`, decision `[enroll, prog_continue, drug_success]`, original `transition_fn`/`objective_fn` reproduced. (Re-written from the earlier dose-control toy.) |
+| `blood_management` | **reformulation** | ⚠️ original optimises a min-cost network flow (`BloodManagementNetwork`, weights from `contribution()`, solved with `cvxopt`/`glpk`); the new code evaluates a *given* allocation with a heuristic bonus/penalty reward. Objectives differ — only a behavioural sanity check is meaningful (fulfilling demand beats leaving it unmet ✓). A JAX-native approximation of the LP is the planned follow-up. |
 
-**Verdict:** 7 of 9 are faithful ports and pass executable parity. 2 remain reformulations: `blood_management` (heuristic reward vs the original min-cost network-flow LP) and `clinical_trials` (an unrelated, much simpler model). Re-porting these to the originals is in progress — `clinical_trials` next (faithful enrollment MDP), `blood_management` after (JAX-native approximation of the LP).
+**Verdict:** 8 of 9 are faithful ports and pass executable parity. 1 remains a reformulation: `blood_management` (heuristic reward vs the original min-cost network-flow LP, which has no clean JAX-native equivalent). A JAX-native LP approximation is the planned follow-up.
 
 ## Findings (beyond run/parity)
 
-1. **`clinical_trials` is not a port** — it is an unrelated, much simpler model.
-   If a faithful clinical-trials port is intended, the new model needs rewriting;
-   otherwise it should be renamed to reflect that it's a dose-control toy.
-2. **`networkx` is an undeclared dependency** (used by the SSP notebooks). Add it
-   to `pyproject.toml` (a `notebooks`/`viz` extra).
+1. **`clinical_trials` and `energy_storage` were reformulations — now re-ported**
+   faithfully to the originals (drug-enrollment MDP, and buy/sell against a price
+   series respectively); both pass exact parity.
+2. **`networkx`** is declared in the `viz` extra (used by the SSP notebooks).
 3. **`NewsvendorFieldPolicy` computes `critical_ratio` but never uses it** — it
    orders the demand *estimate* (≈ mean), not the critical-fractile optimum. The
    reward economics are correct (optimum at `q*=90`); the policy is suboptimal.
 4. **Notebooks are Colab-only** — they clone the published GitHub repo, so as
-   shipped they never exercise local changes. Consider a local-run path.
-5. **`energy_storage` adds a degradation cost** absent from the original — a
-   deliberate modelling change worth documenting in the model docstring.
+   shipped they never exercise local changes (acceptable per project owner).
+5. **`blood_management`** remains a reformulation (heuristic reward vs the
+   original `cvxopt`/`glpk` min-cost network-flow LP); a JAX-native LP
+   approximation is the planned follow-up.
 
 ## Reproduce
 

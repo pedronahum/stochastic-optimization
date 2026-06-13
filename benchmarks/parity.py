@@ -469,6 +469,66 @@ def check_energy_storage() -> ProblemReport:
     return rep
 
 
+# --------------------------------------------------------------------------- #
+# clinical_trials: faithful port of the drug-enrollment MDP. Compare the new
+# transition / reward to the original transition_fn / objective_fn on matched
+# (state, decision, exog) inputs.
+# --------------------------------------------------------------------------- #
+def check_clinical_trials() -> ProblemReport:
+    from collections import namedtuple
+
+    import jax.numpy as jnp
+
+    from problems.clinical_trials.model import ClinicalTrialsModel, Config, ExogenousInfo
+
+    rep = ProblemReport("clinical_trials")
+    cfg = Config()
+    new = ClinicalTrialsModel(cfg)
+    init = {
+        "alpha": cfg.alpha, "success_rev": cfg.success_rev,
+        "program_cost": cfg.program_cost, "patient_cost": cfg.patient_cost,
+    }
+
+    with original_on_path("ClinicalTrials"):
+        mod = importlib.import_module("ClinicalTrialsModel")
+        St = namedtuple("State", ["potential_pop", "success", "failure", "l_response"])
+        Dec = namedtuple("Decision", ["enroll", "prog_continue", "drug_success"])
+        rng = np.random.RandomState(2)
+        for _ in range(5):
+            pp = float(rng.uniform(0, 50))
+            succ = float(rng.uniform(100, 300))
+            fail = float(rng.uniform(20, 100))
+            lam = float(rng.uniform(0.01, 0.1))
+            enroll = float(rng.randint(10, 60))
+            prog = float(rng.randint(0, 2))
+            drug = float(rng.randint(0, 2))
+            npat = float(rng.randint(0, 20))
+            sc = float(rng.randint(0, int(npat) + 1))
+
+            M = object.__new__(mod.ClinicalTrialsModel)
+            M.initial_state = init
+            M.state_variables = ["potential_pop", "success", "failure", "l_response"]
+            M.State = St
+            M.state = St(potential_pop=pp, success=succ, failure=fail, l_response=lam)
+            dec = Dec(enroll=enroll, prog_continue=prog, drug_success=drug)
+            o_next = M.transition_fn(dec, {"new_patients": npat, "succ_count": sc})
+            o_rew = M.objective_fn(dec)
+
+            state = jnp.array([pp, succ, fail, lam])
+            decision = jnp.array([enroll, prog, drug])
+            exog = ExogenousInfo(new_patients=jnp.array(npat), succ_count=jnp.array(sc))
+            n_next = new.transition(state, decision, exog)
+            n_rew = float(new.reward(state, decision, exog))
+
+            rep.checks.append(Check("transition l_response",
+                                    float(o_next["l_response"]), float(n_next[3])))
+            rep.checks.append(Check("transition success",
+                                    float(o_next["success"]), float(n_next[1])))
+            rep.checks.append(Check(f"reward (prog={prog:.0f},drug={drug:.0f})",
+                                    float(o_rew), n_rew))
+    return rep
+
+
 PROBLEMS = {
     "adaptive_market_planning": check_adaptive_market_planning,
     "asset_selling": check_asset_selling,
@@ -477,6 +537,7 @@ PROBLEMS = {
     "ssp_dynamic": check_ssp_dynamic,
     "ssp_static": check_ssp_static,
     "energy_storage": check_energy_storage,
+    "clinical_trials": check_clinical_trials,
     "blood_management": check_blood_management,
 }
 
