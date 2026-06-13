@@ -16,6 +16,7 @@ dependencies = [
   "chex>=0.1.85",           # JAX test helpers & type‑checks
   "jaxtyping>=0.2.28",
   "ott-jax>=0.4",           # entropic OT / Sinkhorn — blood_management allocation LP
+  "scipy>=1.10",            # exact LP duals for the blood_management SPAR ADP
   "ruff>=0.4.8",            # linter / formatter
   "pytest>=8.2",
 ]
