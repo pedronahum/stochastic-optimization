@@ -1,174 +1,53 @@
-# Jupyter Notebooks
+# Notebooks
 
-Interactive tutorials for all 9 stochastic optimization problems. Each notebook is standalone and works seamlessly in Google Colab.
+Interactive tutorials for all 9 problems. Each notebook is self-contained and
+runs in Google Colab: the first cell installs dependencies and clones this repo,
+so no local setup is needed. Click a badge to open.
 
-## 🚀 Quick Start
+| Problem | What it shows | Colab |
+|---|---|---|
+| **Blood Management** | OT allocation across 8 blood types (ABO/Rh substitution), inventory aging, surges | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb) |
+| **Clinical Trials** | Drug-enrollment MDP: enroll vs. stop on a Beta(success, failure) belief | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/clinical_trials.ipynb) |
+| **SSP Dynamic** | Risk-sensitive lookahead routing on a stochastic graph (NetworkX viz) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_dynamic.ipynb) |
+| **SSP Static** | Shortest path with online value-function learning | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_static.ipynb) |
+| **Adaptive Market Planning** | Newsvendor order-quantity learning → analytic optimum `q*=μ·ln(p/c)` | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/adaptive_market_planning.ipynb) |
+| **Medical Decision (Diabetes)** | Bayesian multi-armed bandit over drugs (UCB) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/medical_decision_diabetes.ipynb) |
+| **Two Newsvendor** | Field/central newsvendor coordination, critical-fractile economics | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/two_newsvendor.ipynb) |
+| **Asset Selling** | Optimal stopping under a Markov-modulated price walk | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/asset_selling.ipynb) |
+| **Energy Storage** | Battery arbitrage (buy low / sell high) against a price series | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/energy_storage.ipynb) |
 
-Click any badge below to open in Google Colab:
+## Each notebook
 
-### 1. Blood Management
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/blood_management.ipynb)
+1. **Setup** — `pip install` deps and `git clone` the repo (Colab).
+2. **Configure** a model + policy.
+3. **Simulate** an episode.
+4. **Visualize** the trajectory with matplotlib.
 
-Blood bank inventory optimization with 8 blood types, age-dependent inventory, and stochastic demand.
+## Running locally
 
-**Topics**: Inventory management, substitution rules, FIFO dynamics, surge events
-
----
-
-### 2. Clinical Trials
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/clinical_trials.ipynb)
-
-Adaptive dose optimization for clinical trials with patient outcomes.
-
-**Topics**: Dose-response modeling, adaptive design, safety constraints
-
----
-
-### 3. SSP Dynamic
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_dynamic.ipynb)
-
-Stochastic shortest path with dynamic programming and lookahead.
-
-**Topics**: Graph algorithms, dynamic programming, risk sensitivity, cost estimation
-
----
-
-### 4. SSP Static
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/ssp_static.ipynb)
-
-Classical shortest path with percentile-based risk measures.
-
-**Topics**: Bellman-Ford, percentile optimization, graph search
-
----
-
-### 5. Adaptive Market Planning
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/adaptive_market_planning.ipynb)
-
-Dynamic pricing and demand forecasting with market adaptation.
-
-**Topics**: Price optimization, demand modeling, market dynamics
-
----
-
-### 6. Medical Decision - Diabetes
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/medical_decision_diabetes.ipynb)
-
-Glucose-insulin dynamics for diabetes management.
-
-**Topics**: Physiological modeling, treatment policies, health monitoring
-
----
-
-### 7. Two Newsvendor
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/two_newsvendor.ipynb)
-
-Multi-agent inventory coordination with demand uncertainty.
-
-**Topics**: Coordination mechanisms, inventory allocation, multi-agent systems
-
----
-
-### 8. Asset Selling
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/asset_selling.ipynb)
-
-Optimal asset liquidation with price dynamics.
-
-**Topics**: Optimal stopping, price processes, market timing
-
----
-
-### 9. Energy Storage
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/stochastic-optimization/blob/main/notebooks/energy_storage.ipynb)
-
-Battery management with price arbitrage.
-
-**Topics**: Battery dynamics, price-based charging, capacity management
-
----
-
-## 📚 What's in Each Notebook?
-
-Each notebook includes:
-
-1. **Problem Overview** - Clear description and motivation
-2. **Mathematical Formulation** - Complete equations and notation
-   - State space definition
-   - Dynamics and transitions
-   - Reward/cost function
-   - Objective formulation
-3. **Setup Instructions** - Automatic installation for Colab
-4. **Interactive Code** - Run simulations step-by-step
-5. **Visualizations** - Charts and plots of results
-6. **Policy Comparison** - Compare different strategies
-7. **Key Insights** - Interpretation and takeaways
-8. **Extensions** - Ideas for experimentation
-
-## 🎯 Learning Path
-
-### Beginner
-Start with simpler problems:
-1. **Asset Selling** - Single agent, basic dynamics
-2. **Energy Storage** - Battery constraints, price arbitrage
-3. **SSP Static** - Graph algorithms fundamentals
-
-### Intermediate
-Move to multi-dimensional problems:
-4. **SSP Dynamic** - Dynamic programming, lookahead
-5. **Clinical Trials** - Adaptive policies, safety
-6. **Two Newsvendor** - Multi-agent coordination
-
-### Advanced
-Tackle complex inventory problems:
-7. **Medical Decision Diabetes** - Physiological modeling
-8. **Adaptive Market Planning** - Market dynamics
-9. **Blood Management** - Multi-type inventory, substitution
-
-## 💻 Running Locally
-
-If not using Colab:
+The notebooks' first cell is written for Colab (it clones the *published* repo).
+To run them against your **local** checkout instead, use the headless runner,
+which neutralizes that bootstrap cell and executes against this working copy:
 
 ```bash
-# Clone repository
-git clone https://github.com/pedronahum/stochastic-optimization.git
-cd stochastic-optimization
+JAX_PLATFORMS=cpu MPLBACKEND=Agg python benchmarks/run_notebooks.py
+```
 
-# Install dependencies
-pip install jax jaxlib jaxtyping chex numpy matplotlib jupyter
+Or open them directly:
 
-# Launch Jupyter
+```bash
+pip install -e ".[viz]"          # adds matplotlib + networkx
 jupyter notebook notebooks/
 ```
 
-## 🔧 Requirements
+## Requirements
 
-- Python 3.10+
-- JAX 0.4+
-- matplotlib (for visualizations)
-- Jupyter or Google Colab
+- Python ≥ 3.11
+- `jax` / `jaxlib`, plus `matplotlib` and `networkx` (the `viz` extra) for plots
+- Jupyter or Google Colab (Colab auto-installs everything)
 
-All dependencies are automatically installed in Colab.
+## More
 
-## 📖 Documentation
-
-For more details:
-- **Main README**: [../README.md](../README.md)
-- **Quick Start Guide**: [../QUICK_START.md](../QUICK_START.md)
-- **Code Documentation**: See `problems/<problem>/` for source code
-
-## 🤝 Contributing
-
-Want to improve a notebook?
-1. Fork the repository
-2. Make your changes
-3. Test in Colab
-4. Submit a pull request
-
-## 📄 License
-
-See [LICENSE](../LICENSE) for details.
-
----
-
-**Princeton University - Castle Lab**
-https://github.com/pedronahum/stochastic-optimization
+- Library overview: [../README.md](../README.md)
+- Quick start: [../QUICK_START.md](../QUICK_START.md)
+- Parity vs. the originals: [../benchmarks/PARITY.md](../benchmarks/PARITY.md)
