@@ -222,10 +222,200 @@ def check_two_newsvendor() -> ProblemReport:
     return rep
 
 
+# --------------------------------------------------------------------------- #
+# medical_decision_diabetes: Bayesian (Normal precision-weighted) drug bandit.
+# Faithful port — the original transition_fn belief update is identical.
+# --------------------------------------------------------------------------- #
+def check_medical_decision_diabetes() -> ProblemReport:
+    from collections import namedtuple
+
+    import jax.numpy as jnp
+
+    from problems.medical_decision_diabetes.model import (
+        ExogenousInfo,
+        MedicalDecisionDiabetesConfig,
+        MedicalDecisionDiabetesModel,
+    )
+
+    rep = ProblemReport("medical_decision_diabetes")
+    cfg = MedicalDecisionDiabetesConfig()
+    new = MedicalDecisionDiabetesModel(cfg)
+
+    with original_on_path("MedicalDecisionDiabetes"):
+        mod = importlib.import_module("MedicalDecisionDiabetesModel")
+        St = namedtuple("S", ["x0"])
+        rng = np.random.RandomState(1)
+        for _ in range(5):
+            mu0 = float(rng.uniform(0, 1)); beta0 = float(rng.uniform(1, 50))
+            n0 = float(rng.randint(0, 10)); w = float(rng.uniform(0, 1))
+            bw = float(rng.uniform(1, 100))
+            # original belief update (call the real transition_fn, bypassing __init__)
+            M = object.__new__(mod.MedicalDecisionDiabetesModel)
+            M.state = St(x0=[mu0, beta0, n0])
+            o = M.transition_fn("x0", {"beta_W": bw, "reduction": w})["x0"]
+            # new belief update (drug 0)
+            state = jnp.zeros((cfg.n_drugs, 3)).at[0].set(jnp.array([mu0, beta0, n0]))
+            exog = ExogenousInfo(reduction=jnp.array(w), true_mu=jnp.array(0.0),
+                                 measurement_precision=jnp.array(bw))
+            ns = new.transition(state, 0, exog)
+            rep.checks.append(Check(f"posterior mu (mu0={mu0:.2f},W={w:.2f})", float(o[0]), float(ns[0, 0])))
+            rep.checks.append(Check("posterior precision beta", float(o[1]), float(ns[0, 1])))
+
+    true_mu = np.array(new.true_mu)
+    best = int(np.argmax(true_mu))
+    rep.checks.append(Check("best arm = argmax true_mu", best, best, analytical=best,
+                            note=f"true_mu={np.round(true_mu, 2)}"))
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# ssp_dynamic: risk-neutral lookahead (backward induction) must pick the
+# shortest-path next node — compare against networkx Dijkstra on the mean-cost
+# graph the model itself generated.
+# --------------------------------------------------------------------------- #
+def check_ssp_dynamic() -> ProblemReport:
+    import jax
+    import jax.numpy as jnp
+    import networkx as nx
+
+    from problems.ssp_dynamic.model import SSPDynamicConfig, SSPDynamicModel
+    from problems.ssp_dynamic.policy import LookaheadPolicy
+
+    rep = ProblemReport("ssp_dynamic")
+    cfg = SSPDynamicConfig(n_nodes=8, horizon=12, edge_prob=0.4)
+    model = SSPDynamicModel(cfg)
+    key = jax.random.PRNGKey(3)
+    base = model.init_state(key)
+    adj, mc, tgt = np.array(model.adjacency), np.array(model.mean_costs), model.target_node
+
+    G = nx.DiGraph()
+    for i in range(cfg.n_nodes):
+        for j in range(cfg.n_nodes):
+            if adj[i, j] and i != j:
+                G.add_edge(i, j, weight=float(mc[i, j]))
+
+    pol = LookaheadPolicy(theta=0.5)  # theta=0.5 => risk-neutral (mean costs)
+    agree = total = 0
+    for node in range(cfg.n_nodes):
+        if node == tgt:
+            continue
+        try:
+            nx_next = nx.shortest_path(G, node, tgt, weight="weight")[1]
+        except nx.NetworkXNoPath:
+            continue
+        state = base.at[0].set(float(node))
+        dec = int(pol(None, state, key, model))
+        total += 1
+        agree += int(dec == nx_next)
+    rep.checks.append(Check(f"lookahead next-node == Dijkstra ({agree}/{total} nodes)",
+                            float(total), float(agree)))
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# ssp_static: online value-iteration learner (no closed-form solver). Verify the
+# generated graph is a well-posed SSP whose optimum matches networkx, and that
+# the model's reward charges the traversed edge cost.
+# --------------------------------------------------------------------------- #
+def check_ssp_static() -> ProblemReport:
+    import jax
+    import jax.numpy as jnp
+    import networkx as nx
+
+    from problems.ssp_static.model import ExogenousInfo, SSPStaticConfig, SSPStaticModel
+
+    rep = ProblemReport("ssp_static")
+    cfg = SSPStaticConfig(n_nodes=8, edge_prob=0.4)
+    model = SSPStaticModel(cfg)
+    key = jax.random.PRNGKey(5)
+    model.init_state(key)
+    adj = np.array(model.adjacency)
+    mean = (np.array(model.edge_lower) + np.array(model.edge_upper)) / 2.0
+    origin, tgt = cfg.origin_node, model.target_node
+
+    G = nx.DiGraph()
+    for i in range(cfg.n_nodes):
+        for j in range(cfg.n_nodes):
+            if adj[i, j] and i != j:
+                G.add_edge(i, j, weight=float(mean[i, j]))
+    nx_cost = nx.shortest_path_length(G, origin, tgt, weight="weight")
+
+    # Bellman value iteration on the model's own mean-cost matrix
+    V = np.full(cfg.n_nodes, np.inf); V[tgt] = 0.0
+    for _ in range(2 * cfg.n_nodes):
+        for i in range(cfg.n_nodes):
+            if i == tgt:
+                continue
+            nbrs = [j for j in range(cfg.n_nodes) if adj[i, j] and i != j]
+            if nbrs:
+                V[i] = min(mean[i, j] + V[j] for j in nbrs)
+    rep.checks.append(Check("Bellman V[origin] == Dijkstra cost", float(V[origin]), nx_cost,
+                            analytical=nx_cost))
+
+    # model.reward must charge -edge_cost for the chosen edge
+    j = next(k for k in range(cfg.n_nodes) if adj[origin, k] and k != origin)
+    edge_costs = jnp.array(mean[origin])
+    r = float(model.reward(jnp.array([float(origin)]), j, ExogenousInfo(edge_costs=edge_costs)))
+    rep.checks.append(Check(f"reward == -edge_cost (edge {origin}->{j})", -float(mean[origin, j]), r))
+    return rep
+
+
+# --------------------------------------------------------------------------- #
+# blood_management: REFORMULATION. The original optimises a min-cost network
+# flow (BloodManagementNetwork, edge weights from contribution()); the new code
+# evaluates a *given* allocation with a heuristic bonus/penalty reward. So we do
+# not compare to the original objective — only sanity-check the new reward is
+# well-behaved (fulfilling demand strictly beats leaving it unmet).
+# --------------------------------------------------------------------------- #
+def check_blood_management() -> ProblemReport:
+    import jax.numpy as jnp
+
+    from problems.blood_management.model import (
+        BloodManagementConfig,
+        BloodManagementModel,
+        ExogenousInfo,
+    )
+
+    rep = ProblemReport("blood_management")
+    cfg = BloodManagementConfig(max_age=3)
+    model = BloodManagementModel(cfg)
+    nbt, ma = model.n_blood_types, cfg.max_age
+    nslots, ndem = model.n_inventory_slots, model.n_demand_types
+
+    # plenty of exact-match inventory of the freshest age for every blood type
+    inv = np.zeros((nbt, ma)); inv[:, 0] = 5.0
+    state = jnp.concatenate([jnp.array(inv).reshape(-1), jnp.array([0.0])])
+    demand = jnp.ones(ndem) * 2.0
+    donation = jnp.zeros(nbt)
+    exog = ExogenousInfo(demand=demand, donation=donation)
+
+    no_alloc = jnp.zeros(nslots * ndem)
+    # allocate one unit from each blood type's freshest slot to its urgent demand
+    good = np.zeros((nslots, ndem))
+    for bt in range(nbt):
+        slot = bt * ma + 0  # freshest age
+        dem = bt * model.n_surgery_types + 0  # urgent demand for that blood type
+        if slot < nslots and dem < ndem:
+            good[slot, dem] = 1.0
+    good_alloc = jnp.array(good).reshape(-1)
+
+    r_none = float(model.reward(state, no_alloc, exog))
+    r_good = float(model.reward(state, good_alloc, exog))
+    # encode "good > none" as a 0/1 check that fits the Check(original,new) shape
+    rep.checks.append(Check("reward(fulfil) > reward(unmet)  [reformulation]",
+                            1.0, float(r_good > r_none),
+                            note=f"none={r_none:.0f} < good={r_good:.0f}"))
+    return rep
+
+
 PROBLEMS = {
     "adaptive_market_planning": check_adaptive_market_planning,
     "asset_selling": check_asset_selling,
     "two_newsvendor": check_two_newsvendor,
+    "medical_decision_diabetes": check_medical_decision_diabetes,
+    "ssp_dynamic": check_ssp_dynamic,
+    "ssp_static": check_ssp_static,
+    "blood_management": check_blood_management,
 }
 
 

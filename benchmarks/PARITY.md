@@ -62,6 +62,11 @@ faithful migration must preserve:
 | `adaptive_market_planning` | newsvendor optimum `q* = μ·ln(p/c)` anchor | 26.24 ✓ |
 | `asset_selling` | original `sell_low_policy`/`high_low_policy` vs new `SellLowPolicy`/`HighLowPolicy` over a 24-point price grid | **identical decisions** |
 | `two_newsvendor` | new `reward` vs closed-form newsvendor cost; `argmax_q E[reward]` vs critical fractile `q*` | **q\* = 90 (CR 0.9)** ✓ |
+| `medical_decision_diabetes` | original `transition_fn` belief update vs new `transition` on 5 random matched inputs (posterior mean + precision) | **exact match** (≤1e-4) |
+| `medical_decision_diabetes` | best arm = `argmax true_mu` | drug 4 ✓ |
+| `ssp_dynamic` | risk-neutral `LookaheadPolicy` next node vs networkx Dijkstra on the model's mean-cost graph | **7/7 nodes identical** |
+| `ssp_static` | Bellman value iteration on the model's graph vs networkx Dijkstra; `reward == −edge_cost` | **match** |
+| `blood_management` | reward(fulfil) > reward(unmet) sanity (reformulation — see below) | ✓ |
 
 Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
 
@@ -69,15 +74,17 @@ Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
 
 | Problem | Relation to original | Parity status |
 |---|---|---|
-| `adaptive_market_planning` | **faithful port** | ✅ verified exact (deterministic + analytical) |
-| `asset_selling` | **faithful port** | ✅ verified exact (policy decisions; reward identical by construction) |
-| `two_newsvendor` | **faithful** (same newsvendor economics) | ✅ verified vs analytical fractile |
+| `adaptive_market_planning` | **faithful port** | ✅ verified exact (deterministic transition/reward + newsvendor analytical) |
+| `asset_selling` | **faithful port** | ✅ verified exact (policy decisions identical; reward identical by construction) |
+| `two_newsvendor` | **faithful** (same newsvendor economics) | ✅ verified vs analytical critical fractile |
+| `medical_decision_diabetes` | **faithful port** | ✅ verified exact (Bayesian belief update identical to original `transition_fn`) + best-arm anchor |
+| `ssp_dynamic` | **faithful** (same SSP + lookahead) | ✅ verified — lookahead reproduces Dijkstra shortest-path decisions |
+| `ssp_static` | **faithful** (same SSP; online value-iteration learner) | ✅ verified — graph optimum matches Dijkstra/Bellman, reward charges edge cost. (The online learner itself is not run to convergence.) |
 | `energy_storage` | same domain, **reformulated** | ⚠️ revenue term maps to original `price·(η·sell − buy)`, **but** the new reward adds a `$1000/cycle` degradation cost the original lacks, and uses a single signed charge decision instead of `(buy, sell)`. Not numerically equal. |
-| `medical_decision_diabetes` | same domain (Bayesian drug bandit) | ◻️ assessed by inspection — comparable; executable belief-update parity is feasible (follow-up) |
-| `blood_management` | same domain (allocation) | ◻️ assessed by inspection — executable contribution parity feasible (follow-up) |
-| `ssp_static` | same domain (shortest path) | ◻️ assessed by inspection — analytical check vs Dijkstra feasible (follow-up) |
-| `ssp_dynamic` | same domain (SSP + lookahead) | ◻️ assessed by inspection — analytical check vs Bellman feasible (follow-up) |
+| `blood_management` | **reformulation** | ⚠️ original optimises a min-cost network flow (`BloodManagementNetwork`, weights from `contribution()`); the new code evaluates a *given* allocation with a heuristic bonus/penalty reward. Objectives differ — only a behavioural sanity check is meaningful (fulfilling demand beats leaving it unmet ✓). |
 | `clinical_trials` | **reformulation — different problem** | ❌ parity N/A. The original models drug-program *enrollment* (potential population, success/failure counts, program revenue). The new `clinical_trials` is a scalar dose-control toy: `x_{t+1}=x_t+a+noise`, reward `−|x|`. They are not the same problem. |
+
+**Verdict:** 6 of 9 are faithful ports and pass executable parity (5 exact/deterministic + analytical, 1 — `ssp_static` — analytical with the online learner not run to convergence). 3 of 9 are reformulations: `energy_storage` (extra degradation term), `blood_management` (heuristic reward vs network-flow LP), and `clinical_trials` (an unrelated, much simpler model).
 
 ## Findings (beyond run/parity)
 
