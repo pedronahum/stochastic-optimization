@@ -316,7 +316,7 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # Create model with default configuration
-    config = AssetSellingConfig(
+    config = AssetSellingConfig(  # type: ignore[call-arg]  # chex.dataclass __init__ not seen by mypy
         up_step=2.0,
         down_step=-2.0,
         variance=1.5,
