@@ -1,34 +1,18 @@
-"""Energy Storage problem for stochastic optimization.
+"""Energy Storage problem (faithful port of the original Powell problem).
 
-This module implements the battery energy storage problem where an agent must
-decide when to charge/discharge a battery under price uncertainty and degradation.
-
-Key components:
-- EnergyStorageModel: JAX-native model with JIT-compiled dynamics
-- Various policies: threshold-based, time-of-day, neural networks
-- Configuration with chex dataclasses for type safety
+The agent charges (buys) or discharges (sells) a battery against an exogenous
+price series to maximise revenue ``price * (eta*sell - buy)``.
 
 Example:
+    >>> import jax, jax.numpy as jnp
     >>> from problems.energy_storage import (
-    ...     EnergyStorageModel,
-    ...     EnergyStorageConfig,
-    ...     ThresholdPolicy,
-    ...     ThresholdPolicyConfig
+    ...     EnergyStorageModel, EnergyStorageConfig, BuyLowSellHighPolicy,
     ... )
-    >>> import jax
-    >>>
-    >>> # Create model
-    >>> config = EnergyStorageConfig(capacity=1000.0)
-    >>> model = EnergyStorageModel(config)
-    >>>
-    >>> # Create policy
-    >>> policy_config = ThresholdPolicyConfig(buy_threshold=40.0, sell_threshold=60.0)
-    >>> policy = ThresholdPolicy(model, policy_config)
-    >>>
-    >>> # Simulate
-    >>> key = jax.random.PRNGKey(0)
-    >>> state = model.init_state(key)
-    >>> decision = policy(None, state, key)
+    >>> config = EnergyStorageConfig(eta=0.9, capacity=1.0)
+    >>> model = EnergyStorageModel(config, prices=jnp.array([20.0, 50.0, 15.0]))
+    >>> policy = BuyLowSellHighPolicy(model, theta_buy=20.0, theta_sell=40.0)
+    >>> state = model.init_state(jax.random.PRNGKey(0))
+    >>> decision = policy(None, state, jax.random.PRNGKey(0))
 """
 
 from .model import (
@@ -41,12 +25,9 @@ from .model import (
 )
 from .policy import (
     AlwaysHoldPolicy,
-    LinearPolicy,
-    MyopicPolicy,
-    NeuralPolicy,
-    ThresholdPolicy,
-    ThresholdPolicyConfig,
-    TimeOfDayPolicy,
+    BuyLowSellHighPolicy,
+    grid_search,
+    simulate,
 )
 
 __all__ = [
@@ -57,12 +38,9 @@ __all__ = [
     "State",
     "Decision",
     "Reward",
-    # Policies
-    "ThresholdPolicy",
-    "ThresholdPolicyConfig",
-    "TimeOfDayPolicy",
-    "MyopicPolicy",
-    "LinearPolicy",
-    "NeuralPolicy",
+    # Policies / helpers
+    "BuyLowSellHighPolicy",
     "AlwaysHoldPolicy",
+    "simulate",
+    "grid_search",
 ]

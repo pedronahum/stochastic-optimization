@@ -80,11 +80,11 @@ Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
 | `medical_decision_diabetes` | **faithful port** | ✅ verified exact (Bayesian belief update identical to original `transition_fn`) + best-arm anchor |
 | `ssp_dynamic` | **faithful** (same SSP + lookahead) | ✅ verified — lookahead reproduces Dijkstra shortest-path decisions |
 | `ssp_static` | **faithful** (same SSP; online value-iteration learner) | ✅ verified — graph optimum matches Dijkstra/Bellman, reward charges edge cost. (The online learner itself is not run to convergence.) |
-| `energy_storage` | same domain, **reformulated** | ⚠️ revenue term maps to original `price·(η·sell − buy)`, **but** the new reward adds a `$1000/cycle` degradation cost the original lacks, and uses a single signed charge decision instead of `(buy, sell)`. Not numerically equal. |
+| `energy_storage` | **faithful port** | ✅ verified exact — `(buy, sell)` decision, `transition energy' = energy + η·buy − sell`, `reward = price·(η·sell − buy)`, prices from the historical series. (Re-written from the earlier reformulation; the `$1000/cycle` degradation term was removed.) |
 | `blood_management` | **reformulation** | ⚠️ original optimises a min-cost network flow (`BloodManagementNetwork`, weights from `contribution()`); the new code evaluates a *given* allocation with a heuristic bonus/penalty reward. Objectives differ — only a behavioural sanity check is meaningful (fulfilling demand beats leaving it unmet ✓). |
 | `clinical_trials` | **reformulation — different problem** | ❌ parity N/A. The original models drug-program *enrollment* (potential population, success/failure counts, program revenue). The new `clinical_trials` is a scalar dose-control toy: `x_{t+1}=x_t+a+noise`, reward `−|x|`. They are not the same problem. |
 
-**Verdict:** 6 of 9 are faithful ports and pass executable parity (5 exact/deterministic + analytical, 1 — `ssp_static` — analytical with the online learner not run to convergence). 3 of 9 are reformulations: `energy_storage` (extra degradation term), `blood_management` (heuristic reward vs network-flow LP), and `clinical_trials` (an unrelated, much simpler model).
+**Verdict:** 7 of 9 are faithful ports and pass executable parity. 2 remain reformulations: `blood_management` (heuristic reward vs the original min-cost network-flow LP) and `clinical_trials` (an unrelated, much simpler model). Re-porting these to the originals is in progress — `clinical_trials` next (faithful enrollment MDP), `blood_management` after (JAX-native approximation of the LP).
 
 ## Findings (beyond run/parity)
 

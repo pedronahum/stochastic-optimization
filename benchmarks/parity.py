@@ -97,9 +97,10 @@ def check_adaptive_market_planning() -> ProblemReport:
     new = AdaptiveMarketPlanningModel(cfg)
 
     with original_on_path("AdaptiveMarketPlanning"):
-        OrigModel = importlib.import_module("AdaptiveMarketPlanningModel").AdaptiveMarketPlanningModel
+        mod = importlib.import_module("AdaptiveMarketPlanningModel")
+        OrigModel = mod.AdaptiveMarketPlanningModel
         rng = np.random.RandomState(0)
-        for i in range(6):
+        for _ in range(6):
             q = float(rng.uniform(0, 200))
             d = float(rng.exponential(mean))
             step = float(rng.uniform(0.1, 2.0))
@@ -162,8 +163,10 @@ def check_asset_selling() -> ProblemReport:
             jst = jnp.array([float(price), 1.0, 1.0])
             sl_n = int(new_sl(None, jst, key)[0])
             hl_n = int(new_hl(None, jst, key)[0])
-            sl_orig_total += sl_o; sl_new_total += sl_n
-            hl_orig_total += hl_o; hl_new_total += hl_n
+            sl_orig_total += sl_o
+            sl_new_total += sl_n
+            hl_orig_total += hl_o
+            hl_new_total += hl_n
             n += 1
         # Compare aggregate sell-counts over the price grid (exact agreement => same decisions)
         rep.checks.append(Check(f"sell_low decisions over {n} prices",
@@ -246,8 +249,10 @@ def check_medical_decision_diabetes() -> ProblemReport:
         St = namedtuple("S", ["x0"])
         rng = np.random.RandomState(1)
         for _ in range(5):
-            mu0 = float(rng.uniform(0, 1)); beta0 = float(rng.uniform(1, 50))
-            n0 = float(rng.randint(0, 10)); w = float(rng.uniform(0, 1))
+            mu0 = float(rng.uniform(0, 1))
+            beta0 = float(rng.uniform(1, 50))
+            n0 = float(rng.randint(0, 10))
+            w = float(rng.uniform(0, 1))
             bw = float(rng.uniform(1, 100))
             # original belief update (call the real transition_fn, bypassing __init__)
             M = object.__new__(mod.MedicalDecisionDiabetesModel)
@@ -258,7 +263,8 @@ def check_medical_decision_diabetes() -> ProblemReport:
             exog = ExogenousInfo(reduction=jnp.array(w), true_mu=jnp.array(0.0),
                                  measurement_precision=jnp.array(bw))
             ns = new.transition(state, 0, exog)
-            rep.checks.append(Check(f"posterior mu (mu0={mu0:.2f},W={w:.2f})", float(o[0]), float(ns[0, 0])))
+            rep.checks.append(Check(f"posterior mu (mu0={mu0:.2f})",
+                                    float(o[0]), float(ns[0, 0])))
             rep.checks.append(Check("posterior precision beta", float(o[1]), float(ns[0, 1])))
 
     true_mu = np.array(new.true_mu)
@@ -275,7 +281,6 @@ def check_medical_decision_diabetes() -> ProblemReport:
 # --------------------------------------------------------------------------- #
 def check_ssp_dynamic() -> ProblemReport:
     import jax
-    import jax.numpy as jnp
     import networkx as nx
 
     from problems.ssp_dynamic.model import SSPDynamicConfig, SSPDynamicModel
@@ -341,7 +346,8 @@ def check_ssp_static() -> ProblemReport:
     nx_cost = nx.shortest_path_length(G, origin, tgt, weight="weight")
 
     # Bellman value iteration on the model's own mean-cost matrix
-    V = np.full(cfg.n_nodes, np.inf); V[tgt] = 0.0
+    V = np.full(cfg.n_nodes, np.inf)
+    V[tgt] = 0.0
     for _ in range(2 * cfg.n_nodes):
         for i in range(cfg.n_nodes):
             if i == tgt:
@@ -356,7 +362,8 @@ def check_ssp_static() -> ProblemReport:
     j = next(k for k in range(cfg.n_nodes) if adj[origin, k] and k != origin)
     edge_costs = jnp.array(mean[origin])
     r = float(model.reward(jnp.array([float(origin)]), j, ExogenousInfo(edge_costs=edge_costs)))
-    rep.checks.append(Check(f"reward == -edge_cost (edge {origin}->{j})", -float(mean[origin, j]), r))
+    rep.checks.append(Check(f"reward == -edge_cost ({origin}->{j})",
+                            -float(mean[origin, j]), r))
     return rep
 
 
@@ -383,7 +390,8 @@ def check_blood_management() -> ProblemReport:
     nslots, ndem = model.n_inventory_slots, model.n_demand_types
 
     # plenty of exact-match inventory of the freshest age for every blood type
-    inv = np.zeros((nbt, ma)); inv[:, 0] = 5.0
+    inv = np.zeros((nbt, ma))
+    inv[:, 0] = 5.0
     state = jnp.concatenate([jnp.array(inv).reshape(-1), jnp.array([0.0])])
     demand = jnp.ones(ndem) * 2.0
     donation = jnp.zeros(nbt)
@@ -408,6 +416,59 @@ def check_blood_management() -> ProblemReport:
     return rep
 
 
+# --------------------------------------------------------------------------- #
+# energy_storage: faithful port. transition energy' = energy + eta*buy - sell,
+# reward = price*(eta*sell - buy). Compare to the original transition_fn /
+# objective_fn on matched inputs (deterministic).
+# --------------------------------------------------------------------------- #
+def check_energy_storage() -> ProblemReport:
+    from collections import namedtuple
+
+    import jax.numpy as jnp
+
+    from problems.energy_storage.model import (
+        EnergyStorageConfig,
+        EnergyStorageModel,
+        ExogenousInfo,
+    )
+
+    rep = ProblemReport("energy_storage")
+    eta = 0.9
+    rng = np.random.RandomState(0)
+    prices = rng.uniform(5, 100, size=10).astype(float)
+    new = EnergyStorageModel(EnergyStorageConfig(eta=eta, capacity=1.0, initial_energy=1.0),
+                             prices=jnp.array(prices))
+
+    with original_on_path("EnergyStorage_I"):
+        OM = importlib.import_module("EnergyStorageModel").EnergyStorageModel
+        St = namedtuple("State", ["energy_amount", "price"])
+        Dec = namedtuple("Decision", ["buy", "hold", "sell"])
+        for _ in range(5):
+            energy = float(rng.uniform(0, 1))
+            t = int(rng.randint(0, 8))
+            buy = float(rng.uniform(0, 1))
+            sell = float(rng.uniform(0, energy + 1e-6))
+            M = object.__new__(OM)
+            M.init_args = {"eta": eta, "Rmax": 1.0}
+            M.exog_params = {"hist_price": prices}
+            M.state_variable = ["energy_amount", "price"]
+            M.State = St
+            M.state = St(energy_amount=energy, price=float(prices[t]))
+            dec = Dec(buy=buy, hold=0.0, sell=sell)
+            o_next = M.transition_fn(t, dec)        # uses hist_price[t] as next price
+            o_rew = M.objective_fn(dec)
+
+            st = jnp.array([energy, float(prices[t])])
+            exog = ExogenousInfo(price=jnp.array(float(prices[t])))  # next price from the series
+            n_next = new.transition(st, jnp.array([buy, sell]), exog)
+            n_rew = float(new.reward(st, jnp.array([buy, sell]), exog))
+
+            rep.checks.append(Check(f"transition energy (E={energy:.2f},buy={buy:.2f})",
+                                    float(o_next.energy_amount), float(n_next[0])))
+            rep.checks.append(Check("reward price*(eta*sell-buy)", float(o_rew), n_rew))
+    return rep
+
+
 PROBLEMS = {
     "adaptive_market_planning": check_adaptive_market_planning,
     "asset_selling": check_asset_selling,
@@ -415,6 +476,7 @@ PROBLEMS = {
     "medical_decision_diabetes": check_medical_decision_diabetes,
     "ssp_dynamic": check_ssp_dynamic,
     "ssp_static": check_ssp_static,
+    "energy_storage": check_energy_storage,
     "blood_management": check_blood_management,
 }
 
@@ -432,7 +494,8 @@ def main() -> int:
         for c in rep.checks:
             mark = "✓" if c.match else "✗"
             extra = f"  | analytical={c.analytical:.4f}" if c.analytical is not None else ""
-            print(f"  {mark} {c.name:34s} orig={c.original:12.5f}  new={c.new:12.5f}{extra}  {c.note}")
+            print(f"  {mark} {c.name:34s} orig={c.original:11.4f}  "
+                  f"new={c.new:11.4f}{extra}  {c.note}")
             if not c.match:
                 failures += 1
     print(f"\n{'ALL PARITY CHECKS PASSED' if not failures else f'{failures} CHECK(S) FAILED'}")

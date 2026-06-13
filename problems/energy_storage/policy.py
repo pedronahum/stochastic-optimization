@@ -1,407 +1,111 @@
-"""JAX-native policies for Energy Storage.
+"""Policies for the Energy Storage problem (faithful to the original).
 
-This module implements various decision policies for battery energy storage:
-- Threshold-based policies (buy low, sell high)
-- Time-of-day policies
-- Neural network policies
-- Myopic/greedy policies
+The canonical original policy is **buy-low / sell-high**: buy when the price is
+at or below ``theta_buy``, sell when at or above ``theta_sell``, otherwise hold.
+The original driver grid-searches ``(theta_buy, theta_sell)``; see
+``grid_search`` below.
 """
 
 from functools import partial
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Optional
 
-import chex
 import jax
 import jax.numpy as jnp
-from flax import nnx, struct
 from jaxtyping import Array, Float, PRNGKeyArray, PyTree
 
 if TYPE_CHECKING:
     from problems.energy_storage.model import EnergyStorageModel
 
-
-# Type aliases
-State = Float[Array, "3"]  # [energy, cycles, time_of_day]
-Decision = Float[Array, "1"]  # [charge_power]
+State = Float[Array, "2"]  # [energy_amount, price]
+Decision = Float[Array, "2"]  # [buy, sell]
 Key = PRNGKeyArray
 
 
-@struct.dataclass
-class ThresholdPolicyConfig:
-    """Configuration for threshold-based policies.
+class BuyLowSellHighPolicy:
+    """Buy when price <= theta_buy, sell when price >= theta_sell, else hold.
 
-    Attributes:
-        buy_threshold: Price below which to buy/charge.
-        sell_threshold: Price above which to sell/discharge.
-        charge_rate: Fraction of max rate to use when charging (0-1).
-        discharge_rate: Fraction of max rate to use when discharging (0-1).
-    """
-    buy_threshold: float = 40.0
-    sell_threshold: float = 60.0
-    charge_rate: float = 0.5
-    discharge_rate: float = 0.5
-
-    def __post_init__(self) -> None:
-        """Validate configuration."""
-        chex.assert_scalar_positive(self.buy_threshold)
-        chex.assert_scalar_positive(self.sell_threshold)
-        if self.sell_threshold <= self.buy_threshold:
-            raise ValueError(
-                f"sell_threshold ({self.sell_threshold}) must be > "
-                f"buy_threshold ({self.buy_threshold})"
-            )
-        if not (0.0 < self.charge_rate <= 1.0):
-            raise ValueError(f"charge_rate must be in (0, 1], got {self.charge_rate}")
-        if not (0.0 < self.discharge_rate <= 1.0):
-            raise ValueError(f"discharge_rate must be in (0, 1], got {self.discharge_rate}")
-
-
-class ThresholdPolicy:
-    """Threshold-based policy: Buy low, sell high.
-
-    Charges when price is below buy_threshold.
-    Discharges when price is above sell_threshold.
-    Holds when price is in between.
+    Returns the constrained ``[buy, sell]`` decision (a positive buy charges to
+    capacity; a sell is clipped to the stored energy), matching the original
+    ``build_decision`` projection.
 
     Example:
-        >>> from problems.energy_storage.model import EnergyStorageModel, EnergyStorageConfig
-        >>> config_model = EnergyStorageConfig()
-        >>> model = EnergyStorageModel(config_model)
-        >>> config_policy = ThresholdPolicyConfig(buy_threshold=40.0, sell_threshold=60.0)
-        >>> policy = ThresholdPolicy(model, config_policy)
+        >>> policy = BuyLowSellHighPolicy(model, theta_buy=20.0, theta_sell=60.0)
+        >>> decision = policy(None, state, key)
     """
 
-    def __init__(
-        self,
-        model: "EnergyStorageModel",
-        config: ThresholdPolicyConfig
-    ) -> None:
+    def __init__(self, model: "EnergyStorageModel", theta_buy: float, theta_sell: float) -> None:
         """Initialize policy.
 
         Args:
-            model: Energy storage model instance.
-            config: Policy configuration.
+            model: Energy storage model (used to apply feasibility constraints).
+            theta_buy: Lower price threshold — buy at or below this.
+            theta_sell: Upper price threshold — sell at or above this.
         """
         self.model = model
-        self.config = config
+        self.theta_buy = theta_buy
+        self.theta_sell = theta_sell
 
     @partial(jax.jit, static_argnums=(0,))
-    def __call__(
-        self,
-        params: Optional[PyTree],
-        state: State,
-        key: Key,
-    ) -> Decision:
-        """Get decision based on threshold rule.
-
-        Args:
-            params: Unused (no learnable parameters).
-            state: Current state [energy, cycles, time].
-            key: Random key (unused for deterministic policy).
-
-        Returns:
-            Decision: charge power (+ for charge, - for discharge).
-        """
-        # Sample current price
-        exog = self.model.sample_exogenous(key, state, 0)
-        price = exog.price
-
-        # Get feasible bounds
-        min_charge, max_charge = self.model.get_feasible_bounds(state)
-
-        # Apply threshold logic
-        decision = jnp.where(
-            price < self.config.buy_threshold,
-            # Low price: charge at configured rate
-            max_charge * self.config.charge_rate,
+    def __call__(self, params: Optional[PyTree], state: State, key: Key) -> Decision:
+        """Pick buy / sell / hold by price thresholds, then apply constraints."""
+        price = state[1]
+        raw = jnp.where(
+            price <= self.theta_buy,
+            jnp.array([1.0, 0.0]),  # buy
             jnp.where(
-                price > self.config.sell_threshold,
-                # High price: discharge at configured rate
-                -max_charge * self.config.discharge_rate,
-                # Mid price: hold
-                0.0,
-            )
+                price >= self.theta_sell,
+                jnp.array([0.0, 1.0]),  # sell
+                jnp.array([0.0, 0.0]),  # hold
+            ),
         )
-
-        return jnp.array([decision])
-
-
-class TimeOfDayPolicy:
-    """Time-of-day policy: Charge off-peak, discharge on-peak.
-
-    Charges during off-peak hours (low demand/price).
-    Discharges during peak hours (high demand/price).
-
-    Example:
-        >>> policy = TimeOfDayPolicy(model, peak_start=9, peak_end=20)
-    """
-
-    def __init__(
-        self,
-        model: "EnergyStorageModel",
-        peak_start: int = 9,
-        peak_end: int = 20,
-        charge_rate: float = 0.5,
-        discharge_rate: float = 0.5,
-    ) -> None:
-        """Initialize policy.
-
-        Args:
-            model: Energy storage model instance.
-            peak_start: Hour when peak period starts (0-23).
-            peak_end: Hour when peak period ends (0-23).
-            charge_rate: Fraction of max rate to use when charging.
-            discharge_rate: Fraction of max rate to use when discharging.
-        """
-        self.model = model
-        self.peak_start = peak_start
-        self.peak_end = peak_end
-        self.charge_rate = charge_rate
-        self.discharge_rate = discharge_rate
-
-    @partial(jax.jit, static_argnums=(0,))
-    def __call__(
-        self,
-        params: Optional[PyTree],
-        state: State,
-        key: Key,
-    ) -> Decision:
-        """Get decision based on time-of-day.
-
-        Args:
-            params: Unused.
-            state: Current state.
-            key: Random key (unused).
-
-        Returns:
-            Decision.
-        """
-        hour = state[2]
-
-        # Get feasible bounds
-        min_charge, max_charge = self.model.get_feasible_bounds(state)
-
-        # Check if in peak hours
-        in_peak = (hour >= self.peak_start) & (hour <= self.peak_end)
-
-        decision = jnp.where(
-            in_peak,
-            # Peak: discharge
-            -max_charge * self.discharge_rate,
-            # Off-peak: charge
-            max_charge * self.charge_rate,
-        )
-
-        return jnp.array([decision])
-
-
-class MyopicPolicy:
-    """Myopic policy: Maximize immediate reward.
-
-    Looks one step ahead to choose action with highest immediate reward.
-
-    Example:
-        >>> policy = MyopicPolicy(model)
-    """
-
-    def __init__(
-        self,
-        model: "EnergyStorageModel",
-        n_samples: int = 5
-    ) -> None:
-        """Initialize policy.
-
-        Args:
-            model: Energy storage model instance.
-            n_samples: Number of actions to sample.
-        """
-        self.model = model
-        self.n_samples = n_samples
-
-    @partial(jax.jit, static_argnums=(0,))
-    def __call__(
-        self,
-        params: Optional[PyTree],
-        state: State,
-        key: Key,
-    ) -> Decision:
-        """Get decision by maximizing immediate reward.
-
-        Args:
-            params: Unused.
-            state: Current state.
-            key: Random key for sampling.
-
-        Returns:
-            Decision with highest immediate reward.
-        """
-        # Get feasible bounds
-        min_charge, max_charge = self.model.get_feasible_bounds(state)
-
-        # Sample n_samples actions uniformly in feasible range
-        key_actions, key_exog = jax.random.split(key)
-        actions = jax.random.uniform(
-            key_actions,
-            shape=(self.n_samples,),
-            minval=min_charge,
-            maxval=max_charge
-        )
-
-        # Sample exogenous info
-        exog = self.model.sample_exogenous(key_exog, state, 0)
-
-        # Compute reward for each action
-        def compute_reward(action: Any) -> Any:
-            decision_array = jnp.array([action])
-            return self.model.reward(state, decision_array, exog)
-
-        rewards = jax.vmap(compute_reward)(actions)
-
-        # Choose action with highest reward
-        best_idx = jnp.argmax(rewards)
-        best_action = actions[best_idx]
-
-        return jnp.array([best_action])
-
-
-class LinearPolicy(nnx.Module):
-    """Learnable linear policy.
-
-    Decision = w0 + w1 * energy + w2 * price + w3 * hour
-
-    Example:
-        >>> policy = LinearPolicy(rngs=nnx.Rngs(0))
-    """
-
-    def __init__(self, rngs: nnx.Rngs) -> None:
-        """Initialize policy with random parameters.
-
-        Args:
-            rngs: Flax NNX random number generator state.
-        """
-        # Initialize learnable parameters
-        # 4 features: bias, energy, price, hour
-        self.weights = nnx.Param(
-            jax.random.normal(rngs(), shape=(4,)) * 0.1
-        )
-
-    def __call__(self, state: State, price: float, key: Key) -> Decision:
-        """Get decision from linear model.
-
-        Args:
-            state: Current state [energy, cycles, time].
-            price: Current electricity price.
-            key: Random key (unused for deterministic policy).
-
-        Returns:
-            Decision.
-        """
-        energy, _cycles, hour = state[0], state[1], state[2]
-
-        # Create feature vector
-        features = jnp.array([
-            1.0,  # Bias
-            energy / 1000.0,  # Normalized energy
-            price / 100.0,  # Normalized price
-            hour / 24.0,  # Normalized hour
-        ])
-
-        # Linear combination
-        decision = jnp.dot(self.weights[...], features)
-
-        return jnp.array([decision])
-
-
-class NeuralPolicy(nnx.Module):
-    """Neural network policy for energy storage.
-
-    Maps [energy, price, hour] -> charge_power
-
-    Example:
-        >>> policy = NeuralPolicy(hidden_dims=[32, 16], rngs=nnx.Rngs(0))
-    """
-
-    def __init__(
-        self,
-        hidden_dims: Optional[List[int]] = None,
-        rngs: Optional[nnx.Rngs] = None
-    ) -> None:
-        """Initialize neural network policy.
-
-        Args:
-            hidden_dims: List of hidden layer dimensions.
-            rngs: Flax NNX random number generator state.
-        """
-        if hidden_dims is None:
-            hidden_dims = [32, 16]
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        # Input: [energy, price, hour] = 3 features
-        input_dim = 3
-
-        # Build network layers
-        layers: List[Any] = []
-        prev_dim = input_dim
-
-        for hidden_dim in hidden_dims:
-            layers.append(nnx.Linear(prev_dim, hidden_dim, rngs=rngs))
-            prev_dim = hidden_dim
-
-        # Output layer: single value (charge power)
-        layers.append(nnx.Linear(prev_dim, 1, rngs=rngs))
-
-        self.layers = nnx.data(layers)
-
-    def __call__(self, state: State, price: float, key: Key) -> Decision:
-        """Get decision from neural network.
-
-        Args:
-            state: Current state [energy, cycles, time].
-            price: Current electricity price.
-            key: Random key (unused).
-
-        Returns:
-            Decision.
-        """
-        energy, _cycles, hour = state[0], state[1], state[2]
-
-        # Create input features (normalized)
-        x = jnp.array([
-            energy / 1000.0,  # Normalized energy
-            price / 100.0,  # Normalized price
-            hour / 24.0,  # Normalized hour
-        ])
-
-        # Forward pass through network
-        for layer in self.layers[:-1]:
-            x = layer(x)
-            x = nnx.relu(x)
-
-        # Output layer (no activation)
-        decision = self.layers[-1](x)[0]
-
-        return jnp.array([decision])
+        return self.model.apply_constraints(state, raw)
 
 
 class AlwaysHoldPolicy:
-    """Baseline policy that never charges or discharges."""
+    """Baseline that never trades."""
 
     @partial(jax.jit, static_argnums=(0,))
-    def __call__(
-        self,
-        params: Optional[PyTree],
-        state: State,
-        key: Key,
-    ) -> Decision:
-        """Always return zero (hold).
+    def __call__(self, params: Optional[PyTree], state: State, key: Key) -> Decision:
+        """Always return the no-trade decision."""
+        return jnp.array([0.0, 0.0])
 
-        Args:
-            params: Unused.
-            state: Current state.
-            key: Random key (unused).
 
-        Returns:
-            Decision: Always [0.0] (hold).
-        """
-        return jnp.array([0.0])
+def simulate(model: "EnergyStorageModel", policy: BuyLowSellHighPolicy, horizon: int) -> float:
+    """Run ``policy`` on ``model`` for ``horizon`` steps; return total contribution.
+
+    Mirrors the original ``run_policy``: the final period liquidates remaining
+    energy (a forced sell).
+    """
+    state = model.init_state(jax.random.PRNGKey(0))
+    total = 0.0
+    for t in range(horizon):
+        if t == horizon - 1:  # liquidate on the last step
+            decision = model.apply_constraints(state, jnp.array([0.0, 1.0]))
+        else:
+            decision = policy(None, state, jax.random.PRNGKey(0))
+        exog = model.sample_exogenous(jax.random.PRNGKey(0), state, t)
+        total += float(model.reward(state, decision, exog))
+        state = model.transition(state, decision, exog)
+    return total
+
+
+def grid_search(
+    model: "EnergyStorageModel",
+    horizon: int,
+    buy_grid: Array,
+    sell_grid: Array,
+) -> tuple[tuple[float, float], float]:
+    """Grid-search ``(theta_buy, theta_sell)`` (original ``perform_grid_search``).
+
+    Returns ``((best_theta_buy, best_theta_sell), best_contribution)``.
+    """
+    best_theta = (float(buy_grid[0]), float(sell_grid[0]))
+    best = -float("inf")
+    for tb in buy_grid:
+        for ts in sell_grid:
+            if tb >= ts:
+                continue
+            c = simulate(model, BuyLowSellHighPolicy(model, float(tb), float(ts)), horizon)
+            if c > best:
+                best, best_theta = c, (float(tb), float(ts))
+    return best_theta, best
