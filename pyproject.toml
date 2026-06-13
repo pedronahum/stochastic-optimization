@@ -15,6 +15,7 @@ dependencies = [
   "optax>=0.2.2",           # DeepMind optimiser toolbox :contentReference[oaicite:1]{index=1}
   "chex>=0.1.85",           # JAX test helpers & type‑checks
   "jaxtyping>=0.2.28",
+  "ott-jax>=0.4",           # entropic OT / Sinkhorn — blood_management allocation LP
   "ruff>=0.4.8",            # linter / formatter
   "pytest>=8.2",
 ]

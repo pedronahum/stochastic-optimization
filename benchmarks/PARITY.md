@@ -82,9 +82,13 @@ Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
 | `ssp_static` | **faithful** (same SSP; online value-iteration learner) | ✅ verified — graph optimum matches Dijkstra/Bellman, reward charges edge cost. (The online learner itself is not run to convergence.) |
 | `energy_storage` | **faithful port** | ✅ verified exact — `(buy, sell)` decision, `transition energy' = energy + η·buy − sell`, `reward = price·(η·sell − buy)`, prices from the historical series. (Re-written from the earlier reformulation; the `$1000/cycle` degradation term was removed.) |
 | `clinical_trials` | **faithful port** | ✅ verified exact — drug-enrollment MDP: state `[potential_pop, success, failure, l_response]`, decision `[enroll, prog_continue, drug_success]`, original `transition_fn`/`objective_fn` reproduced. (Re-written from the earlier dose-control toy.) |
-| `blood_management` | **reformulation** | ⚠️ original optimises a min-cost network flow (`BloodManagementNetwork`, weights from `contribution()`, solved with `cvxopt`/`glpk`); the new code evaluates a *given* allocation with a heuristic bonus/penalty reward. Objectives differ — only a behavioural sanity check is meaningful (fulfilling demand beats leaving it unmet ✓). A JAX-native approximation of the LP is the planned follow-up. |
+| `blood_management` | **faithful port (approximate solve)** | ✅ verified close — the original per-period allocation **LP** (min-cost network flow, glpk) is reproduced with **entropic OT (Sinkhorn, `ott-jax`)**, JAX-native and differentiable. The OT objective matches the exact LP (scipy/HiGHS) to **~0.01** (gap from entropic regularisation). Original `contribution()` weights + ABO/RhD substitution rules used. |
 
-**Verdict:** 8 of 9 are faithful ports and pass executable parity. 1 remains a reformulation: `blood_management` (heuristic reward vs the original min-cost network-flow LP, which has no clean JAX-native equivalent). A JAX-native LP approximation is the planned follow-up.
+**Verdict:** all **9 of 9** problems are faithful ports passing executable parity — 8 exact/analytical, and `blood_management` matching the exact LP to ~0.01 via entropic OT. (The original blood code is also an ADP with *learned* value-to-go on holding edges; we reproduce the per-period allocation LP, not that learned value-function layer.)
+
+### Why entropic OT for blood (and not jaxopt)
+
+The blood allocation is a degenerate transportation LP. `jaxopt.BoxOSQP` (first-order ADMM) only reached ~1% gaps and sometimes returned slightly infeasible points (didn't converge). Entropic OT / Sinkhorn (`ott-jax`) is the natural, robust, differentiable JAX-native solver for transportation problems and matches the exact LP to ~1e-2 with small regularisation (`epsilon`). `jaxopt` is pulled in transitively by `ott-jax`.
 
 ## Findings (beyond run/parity)
 
@@ -97,9 +101,10 @@ Run: `JAX_PLATFORMS=cpu python benchmarks/parity.py`
    reward economics are correct (optimum at `q*=90`); the policy is suboptimal.
 4. **Notebooks are Colab-only** — they clone the published GitHub repo, so as
    shipped they never exercise local changes (acceptable per project owner).
-5. **`blood_management`** remains a reformulation (heuristic reward vs the
-   original `cvxopt`/`glpk` min-cost network-flow LP); a JAX-native LP
-   approximation is the planned follow-up.
+5. **`blood_management`** is now a faithful port: its per-period allocation LP
+   is solved with entropic OT (`ott-jax` Sinkhorn), matching the exact LP to
+   ~1e-2. (The original's *learned* value-to-go on holding edges — the ADP layer
+   — is not reproduced; only the per-period allocation.)
 
 ## Reproduce
 

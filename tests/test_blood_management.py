@@ -10,8 +10,57 @@ from problems.blood_management import (
     ExogenousInfo,
     FIFOPolicy,
     GreedyPolicy,
+    OTAllocationPolicy,
     RandomPolicy,
 )
+
+# ============================================================================
+# Optimal allocation (entropic OT — faithful to the original per-period LP)
+# ============================================================================
+
+
+def test_ot_allocation_feasible_and_optimal() -> None:
+    """OT allocation respects supply/demand and matches the exact LP optimum."""
+    import numpy as np
+    from scipy.optimize import linprog
+
+    model = BloodManagementModel(BloodManagementConfig(max_age=3, epsilon=0.05))
+    C = np.array(model.contribution_matrix)
+    feas = np.array(model.feasible_mask)
+    nB, nD = C.shape
+    rng = np.random.RandomState(0)
+    inventory = rng.randint(0, 5, nB).astype(float)
+    demand = rng.randint(0, 5, nD).astype(float)
+
+    alloc = np.array(model.optimal_allocation(jnp.array(inventory), jnp.array(demand)))
+    A = alloc.reshape(nB, nD)
+    # feasibility (small entropic slack tolerated)
+    assert np.all(A.sum(1) <= inventory + 1e-2)
+    assert np.all(A.sum(0) <= demand + 1e-2)
+    # objective within the entropic gap of the exact LP
+    edges = [(s, d) for s in range(nB) for d in range(nD) if feas[s, d]]
+    cost = np.array([-C[s, d] for s, d in edges])
+    Arow = np.zeros((nB, len(edges)))
+    Acol = np.zeros((nD, len(edges)))
+    for e, (s, d) in enumerate(edges):
+        Arow[s, e] = 1.0
+        Acol[d, e] = 1.0
+    lp = -linprog(cost, A_ub=np.vstack([Arow, Acol]),
+                  b_ub=np.concatenate([inventory, demand]),
+                  bounds=[(0, None)] * len(edges)).fun
+    ot_obj = float((C * A).sum())
+    assert abs(lp - ot_obj) / max(lp, 1.0) < 0.02
+
+
+def test_ot_allocation_policy_matches_model() -> None:
+    model = BloodManagementModel(BloodManagementConfig(max_age=3))
+    policy = OTAllocationPolicy(model)
+    key = jax.random.PRNGKey(0)
+    state = model.init_state(key)
+    demand = model.sample_exogenous(key, state, 0).demand
+    a_policy = policy(None, state, key, demand)
+    a_model = model.optimal_allocation(state[:-1], demand)
+    assert jnp.allclose(a_policy, a_model)
 
 # ============================================================================
 # Configuration Tests

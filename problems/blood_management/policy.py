@@ -16,6 +16,29 @@ State = Float[Array, "..."]
 Decision = Float[Array, "..."]
 
 
+class OTAllocationPolicy:
+    """Optimal allocation policy — solves the per-period LP via entropic OT.
+
+    This is the faithful analogue of the original glpk allocation: it maximises
+    the total match contribution given the current inventory and the realised
+    demand (so it takes ``demand`` explicitly).
+
+    Example:
+        >>> policy = OTAllocationPolicy(model)
+        >>> allocation = policy(None, state, key, exog.demand)
+    """
+
+    def __init__(self, model: "BloodManagementModel") -> None:
+        """Initialize with the model that provides ``optimal_allocation``."""
+        self.model = model
+
+    def __call__(self, params: Optional[PyTree], state: State, key: Key,
+                 demand: Array) -> Decision:
+        """Return the contribution-maximising allocation for the realised demand."""
+        inventory = state[:-1]
+        return self.model.optimal_allocation(inventory, demand)
+
+
 class GreedyPolicy:
     """Greedy allocation policy for blood management.
 

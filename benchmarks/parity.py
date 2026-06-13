@@ -39,10 +39,11 @@ class Check:
     new: float
     analytical: float | None = None
     note: str = ""
+    tol: float = TOL  # exact ports use TOL; approximate solvers (OT) widen this
 
     @property
     def match(self) -> bool:
-        ok = np.allclose(self.original, self.new, rtol=TOL, atol=TOL)
+        ok = np.allclose(self.original, self.new, rtol=self.tol, atol=self.tol)
         if self.analytical is not None:
             ok = ok and np.allclose(self.new, self.analytical, rtol=2e-2, atol=2e-2)
         return bool(ok)
@@ -67,8 +68,13 @@ def original_on_path(subdir: str):
         yield
     finally:
         os.chdir(cwd)
-        for m in set(sys.modules) - saved:
-            sys.modules.pop(m, None)
+        # Only drop modules imported FROM the legacy dir (the original code) — not
+        # transitively-imported third-party C extensions like scipy/numpy, whose
+        # removal would break a later re-import ("cannot load module twice").
+        for m in list(set(sys.modules) - saved):
+            mod = sys.modules.get(m)
+            if getattr(mod, "__file__", None) and str(mod.__file__).startswith(d):
+                sys.modules.pop(m, None)
         if d in sys.path:
             sys.path.remove(d)
 
@@ -368,51 +374,42 @@ def check_ssp_static() -> ProblemReport:
 
 
 # --------------------------------------------------------------------------- #
-# blood_management: REFORMULATION. The original optimises a min-cost network
-# flow (BloodManagementNetwork, edge weights from contribution()); the new code
-# evaluates a *given* allocation with a heuristic bonus/penalty reward. So we do
-# not compare to the original objective — only sanity-check the new reward is
-# well-behaved (fulfilling demand strictly beats leaving it unmet).
+# blood_management: the original solves a per-period allocation LP (min-cost
+# network flow, glpk). We reproduce it with entropic OT (Sinkhorn). Compare the
+# OT allocation's objective to the EXACT LP optimum (scipy/HiGHS) on the same
+# contribution matrix — they agree to within the entropic-regularisation gap.
 # --------------------------------------------------------------------------- #
 def check_blood_management() -> ProblemReport:
     import jax.numpy as jnp
+    from scipy.optimize import linprog
 
-    from problems.blood_management.model import (
-        BloodManagementConfig,
-        BloodManagementModel,
-        ExogenousInfo,
-    )
+    from problems.blood_management.model import BloodManagementConfig, BloodManagementModel
 
     rep = ProblemReport("blood_management")
-    cfg = BloodManagementConfig(max_age=3)
-    model = BloodManagementModel(cfg)
-    nbt, ma = model.n_blood_types, cfg.max_age
-    nslots, ndem = model.n_inventory_slots, model.n_demand_types
+    model = BloodManagementModel(BloodManagementConfig(max_age=3, epsilon=0.05))
+    C = np.array(model.contribution_matrix)
+    feas = np.array(model.feasible_mask)
+    nB, nD = C.shape
+    edges = [(s, d) for s in range(nB) for d in range(nD) if feas[s, d]]
+    cost = np.array([-C[s, d] for s, d in edges])  # minimise -contribution
+    Arow = np.zeros((nB, len(edges)))
+    Acol = np.zeros((nD, len(edges)))
+    for e, (s, d) in enumerate(edges):
+        Arow[s, e] = 1.0
+        Acol[d, e] = 1.0
+    Aub = np.vstack([Arow, Acol])
 
-    # plenty of exact-match inventory of the freshest age for every blood type
-    inv = np.zeros((nbt, ma))
-    inv[:, 0] = 5.0
-    state = jnp.concatenate([jnp.array(inv).reshape(-1), jnp.array([0.0])])
-    demand = jnp.ones(ndem) * 2.0
-    donation = jnp.zeros(nbt)
-    exog = ExogenousInfo(demand=demand, donation=donation)
-
-    no_alloc = jnp.zeros(nslots * ndem)
-    # allocate one unit from each blood type's freshest slot to its urgent demand
-    good = np.zeros((nslots, ndem))
-    for bt in range(nbt):
-        slot = bt * ma + 0  # freshest age
-        dem = bt * model.n_surgery_types + 0  # urgent demand for that blood type
-        if slot < nslots and dem < ndem:
-            good[slot, dem] = 1.0
-    good_alloc = jnp.array(good).reshape(-1)
-
-    r_none = float(model.reward(state, no_alloc, exog))
-    r_good = float(model.reward(state, good_alloc, exog))
-    # encode "good > none" as a 0/1 check that fits the Check(original,new) shape
-    rep.checks.append(Check("reward(fulfil) > reward(unmet)  [reformulation]",
-                            1.0, float(r_good > r_none),
-                            note=f"none={r_none:.0f} < good={r_good:.0f}"))
+    rng = np.random.RandomState(0)
+    for _ in range(3):
+        inventory = rng.randint(0, 5, nB).astype(float)
+        demand = rng.randint(0, 5, nD).astype(float)
+        res = linprog(cost, A_ub=Aub, b_ub=np.concatenate([inventory, demand]),
+                      bounds=[(0, None)] * len(edges))
+        lp_opt = -res.fun
+        alloc = model.optimal_allocation(jnp.array(inventory), jnp.array(demand))
+        ot_obj = float(jnp.sum(model.contribution_matrix * alloc.reshape(nB, nD)))
+        rep.checks.append(Check("OT objective vs exact LP (HiGHS)", lp_opt, ot_obj,
+                                tol=2e-2, note=f"gap={abs(lp_opt - ot_obj):.3f} (entropic)"))
     return rep
 
 
